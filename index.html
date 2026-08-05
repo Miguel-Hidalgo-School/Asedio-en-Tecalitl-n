@@ -197,14 +197,14 @@ CHARACTERS.forEach((c,i)=>{
 
 // ---------- mapas ----------
 const MAPS = [
-  {name:'Centro de Tecalitlán', ground:'#8a4a2f', accent:'#FFB627', bossName:'El Mariachi Caído', ability:'summon'},
-  {name:'San Isidro', ground:'#5a5a3a', accent:'#8CE6FF', bossName:'Enjambre', ability:'swarm'},
-  {name:'Real de Minas', ground:'#4a5a5a', accent:'#B98CFF', bossName:'Muro Viviente', ability:'shield'},
-  {name:'Eduardo Romero', ground:'#7a5a3a', accent:'#FF9C8C', bossName:'Excavador', ability:'charge'},
-  {name:'Acueducto', ground:'#2f5a6a', accent:'#7fe9df', bossName:'Corriente', ability:'slow'},
-  {name:'Secundaria 32', ground:'#5a4a6a', accent:'#FFD86B', bossName:'Director Zombie', ability:'stun'},
-  {name:'La Purísima', ground:'#4a2f4a', accent:'#e0a8ff', bossName:'Penitente', ability:'curse'},
-  {name:'Santiago', ground:'#3a2a2a', accent:'#FF6B35', bossName:'El Patrón', ability:'combo'},
+  {name:'Centro de Tecalitlán', ground:'#8a4a2f', accent:'#FFB627', bossName:'El Mariachi Caído', ability:'summon', structure:'kiosco', label:'KIOSKO'},
+  {name:'San Isidro', ground:'#5a5a3a', accent:'#8CE6FF', bossName:'Enjambre', ability:'swarm', structure:'barricada', label:'BARRICADA'},
+  {name:'Real de Minas', ground:'#4a5a5a', accent:'#B98CFF', bossName:'Muro Viviente', ability:'shield', structure:'muro', label:'MURO'},
+  {name:'Eduardo Romero', ground:'#7a5a3a', accent:'#FF9C8C', bossName:'Excavador', ability:'charge', structure:'obra', label:'OBRA'},
+  {name:'Acueducto', ground:'#2f5a6a', accent:'#7fe9df', bossName:'Corriente', ability:'slow', structure:'acueducto', label:'ACUEDUCTO'},
+  {name:'Secundaria 32', ground:'#5a4a6a', accent:'#FFD86B', bossName:'Director Zombie', ability:'stun', structure:'escuela', label:'ESCUELA'},
+  {name:'La Purísima', ground:'#4a2f4a', accent:'#e0a8ff', bossName:'Penitente', ability:'curse', structure:'capilla', label:'CAPILLA'},
+  {name:'Santiago', ground:'#3a2a2a', accent:'#FF6B35', bossName:'El Patrón', ability:'combo', structure:'cancha', label:'CANCHA TECHADA'},
 ];
 let mapIndex = 0;
 function currentMap(){ return MAPS[mapIndex]; }
@@ -677,19 +677,68 @@ function drawPlaza(){
   ctx.save();
   ctx.beginPath(); ctx.arc(baseX,baseY, baseRadius+90, 0, Math.PI*2); ctx.fillStyle='rgba(214,159,97,0.35)'; ctx.fill();
   ctx.restore();
-  // church silhouette (top)
-  ctx.fillStyle = 'rgba(58,31,50,0.85)';
-  ctx.fillRect(W*0.42, H*0.02, W*0.16, H*0.22);
-  ctx.beginPath(); ctx.moveTo(W*0.42,H*0.02); ctx.lineTo(W*0.5,H*-0.02); ctx.lineTo(W*0.58,H*0.02); ctx.fill();
-  // museo Vargas block (left)
-  ctx.fillStyle='rgba(90,45,60,0.75)';
-  ctx.fillRect(W*0.04,H*0.06,W*0.18,H*0.14);
-  // base kiosko
-  ctx.beginPath(); ctx.arc(baseX,baseY,baseRadius,0,Math.PI*2);
-  ctx.fillStyle=m.accent+'38'; ctx.fill();
-  ctx.strokeStyle=m.accent; ctx.lineWidth=3; ctx.stroke();
-  ctx.fillStyle=m.accent; ctx.font='bold 13px Rubik'; ctx.textAlign='center';
-  ctx.fillText('KIOSKO', baseX, baseY+5);
+  // church silhouette (top) — solo existe en el Centro
+  if(mapIndex===0){
+    ctx.fillStyle = 'rgba(58,31,50,0.85)';
+    ctx.fillRect(W*0.42, H*0.02, W*0.16, H*0.22);
+    ctx.beginPath(); ctx.moveTo(W*0.42,H*0.02); ctx.lineTo(W*0.5,H*-0.02); ctx.lineTo(W*0.58,H*0.02); ctx.fill();
+    // museo Vargas block (left)
+    ctx.fillStyle='rgba(90,45,60,0.75)';
+    ctx.fillRect(W*0.04,H*0.06,W*0.18,H*0.14);
+  } else {
+    // siluetas genéricas de casas/edificios para los demás mapas
+    ctx.fillStyle = 'rgba(40,30,35,0.6)';
+    ctx.fillRect(W*0.05,H*0.05,W*0.14,H*0.16);
+    ctx.fillRect(W*0.78,H*0.04,W*0.15,H*0.18);
+  }
+  // base — estructura distinta según el tipo de lugar real
+  ctx.save();
+  ctx.translate(baseX, baseY);
+  if(m.structure==='kiosco'){
+    ctx.beginPath(); ctx.arc(0,0,baseRadius,0,Math.PI*2);
+    ctx.fillStyle=m.accent+'38'; ctx.fill();
+    ctx.strokeStyle=m.accent; ctx.lineWidth=3; ctx.stroke();
+    // techo del kiosko
+    ctx.beginPath(); ctx.moveTo(-baseRadius*0.6,-baseRadius*0.3); ctx.lineTo(0,-baseRadius*0.9); ctx.lineTo(baseRadius*0.6,-baseRadius*0.3); ctx.closePath();
+    ctx.fillStyle=m.accent+'55'; ctx.fill(); ctx.strokeStyle=m.accent; ctx.stroke();
+  } else if(m.structure==='barricada'){
+    ctx.beginPath(); ctx.arc(0,0,baseRadius,0,Math.PI*2); ctx.fillStyle=m.accent+'25'; ctx.fill(); ctx.strokeStyle=m.accent; ctx.lineWidth=2; ctx.stroke();
+    ctx.strokeStyle='#8a6b4a'; ctx.lineWidth=6;
+    for(let i=-3;i<=3;i++){ ctx.beginPath(); ctx.moveTo(i*16,-baseRadius*0.5); ctx.lineTo(i*16-6,-baseRadius*0.1); ctx.stroke(); }
+  } else if(m.structure==='muro'){
+    ctx.beginPath(); ctx.arc(0,0,baseRadius,0,Math.PI*2); ctx.fillStyle=m.accent+'25'; ctx.fill(); ctx.strokeStyle=m.accent; ctx.lineWidth=2; ctx.stroke();
+    ctx.fillStyle='#8a8a7a';
+    for(let r=0;r<3;r++){ for(let c=-2;c<=2;c++){ ctx.fillRect(c*18-8+(r%2)*9, -baseRadius*0.55+r*14, 16,10); } }
+  } else if(m.structure==='obra'){
+    ctx.beginPath(); ctx.arc(0,0,baseRadius,0,Math.PI*2); ctx.fillStyle=m.accent+'25'; ctx.fill(); ctx.strokeStyle=m.accent; ctx.lineWidth=2; ctx.stroke();
+    ctx.strokeStyle='#d4a017'; ctx.lineWidth=4;
+    ctx.strokeRect(-baseRadius*0.55,-baseRadius*0.55,baseRadius*1.1,baseRadius*0.55);
+    ctx.beginPath(); ctx.moveTo(-baseRadius*0.55,-baseRadius*0.55); ctx.lineTo(baseRadius*0.55,0); ctx.stroke();
+  } else if(m.structure==='acueducto'){
+    ctx.strokeStyle=m.accent; ctx.lineWidth=6;
+    for(let i=-2;i<=2;i++){ ctx.beginPath(); ctx.arc(i*30,-baseRadius*0.2,baseRadius*0.35,0,Math.PI,true); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(-baseRadius*1.1,-baseRadius*0.2); ctx.lineTo(baseRadius*1.1,-baseRadius*0.2); ctx.stroke();
+  } else if(m.structure==='escuela'){
+    ctx.fillStyle=m.accent+'30'; ctx.fillRect(-baseRadius*0.6,-baseRadius*0.5,baseRadius*1.2,baseRadius*0.5);
+    ctx.strokeStyle=m.accent; ctx.lineWidth=2; ctx.strokeRect(-baseRadius*0.6,-baseRadius*0.5,baseRadius*1.2,baseRadius*0.5);
+    ctx.strokeStyle='rgba(255,255,255,0.5)';
+    for(let i=-1;i<=1;i++){ ctx.strokeRect(i*22-8,-baseRadius*0.4,16,20); }
+  } else if(m.structure==='capilla'){
+    ctx.fillStyle=m.accent+'30'; ctx.beginPath(); ctx.moveTo(-baseRadius*0.4,0); ctx.lineTo(-baseRadius*0.4,-baseRadius*0.5); ctx.lineTo(0,-baseRadius*0.85); ctx.lineTo(baseRadius*0.4,-baseRadius*0.5); ctx.lineTo(baseRadius*0.4,0); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle=m.accent; ctx.lineWidth=2; ctx.stroke();
+    ctx.strokeStyle=m.accent; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(0,-baseRadius*0.95); ctx.lineTo(0,-baseRadius*0.75); ctx.moveTo(-6,-baseRadius*0.88); ctx.lineTo(6,-baseRadius*0.88); ctx.stroke();
+  } else if(m.structure==='cancha'){
+    ctx.fillStyle=m.accent+'25'; ctx.fillRect(-baseRadius*0.7,-baseRadius*0.4,baseRadius*1.4,baseRadius*0.55);
+    ctx.strokeStyle=m.accent; ctx.lineWidth=2; ctx.strokeRect(-baseRadius*0.7,-baseRadius*0.4,baseRadius*1.4,baseRadius*0.55);
+    // techo triangular de la cancha techada
+    ctx.strokeStyle=m.accent; ctx.beginPath();
+    for(let i=-2;i<=2;i++){ ctx.moveTo(i*22,-baseRadius*0.4); ctx.lineTo(0,-baseRadius*0.75); }
+    ctx.stroke();
+  }
+  ctx.fillStyle=m.accent; ctx.font='bold 12px Rubik'; ctx.textAlign='center';
+  ctx.fillText(m.label, 0, baseRadius*0.15);
+  ctx.restore();
 }
 
 function drawHumanoid(x, y, angle, opts){
@@ -931,6 +980,38 @@ function drawBoss(){
     ctx.fillStyle='#241f18'; ctx.fill();
     ctx.strokeStyle=m.accent; ctx.lineWidth=2; ctx.stroke();
     ctx.beginPath(); ctx.arc(0,-48,9,0,Math.PI*2); ctx.fillStyle='#2e2820'; ctx.fill();
+  } else if(boss.ability==='swarm'){
+    // Enjambre: rodeado de pequeñas siluetas orbitando
+    for(let i=0;i<5;i++){
+      const a = Date.now()/500 + i*(Math.PI*2/5);
+      const ex = Math.cos(a)*40, ey = Math.sin(a)*40*0.6-10;
+      ctx.beginPath(); ctx.arc(ex,ey,5,0,Math.PI*2); ctx.fillStyle=m.accent; ctx.globalAlpha=0.7; ctx.fill(); ctx.globalAlpha=1;
+    }
+  } else if(boss.ability==='shield'){
+    // Muro Viviente: bloques de tabique en el torso
+    ctx.fillStyle='#8a8a7a';
+    for(let r=0;r<3;r++){ for(let c=-1;c<=1;c++){ ctx.fillRect(c*13-6+(r%2)*6.5,-18+r*13,11,9); } }
+  } else if(boss.ability==='charge'){
+    // Excavador: herramienta grande al hombro
+    ctx.save(); ctx.translate(20,-16); ctx.rotate(-0.6);
+    ctx.strokeStyle='#8a6b4a'; ctx.lineWidth=5; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-34); ctx.stroke();
+    ctx.fillStyle='#c9c9c9'; ctx.beginPath(); ctx.moveTo(-10,-34); ctx.lineTo(10,-34); ctx.lineTo(0,-46); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  } else if(boss.ability==='slow'){
+    // Corriente: ondas de agua alrededor
+    for(let i=0;i<3;i++){
+      const rad = 20+((Date.now()/300+i*15)%25);
+      ctx.beginPath(); ctx.arc(0,-8,rad,0,Math.PI*2); ctx.strokeStyle=m.accent; ctx.globalAlpha=0.35; ctx.lineWidth=2; ctx.stroke(); ctx.globalAlpha=1;
+    }
+  } else if(boss.ability==='stun'){
+    // Director Zombie: corbata y anteojos
+    ctx.fillStyle='#2a2a2a'; ctx.beginPath(); ctx.moveTo(-3,-22); ctx.lineTo(3,-22); ctx.lineTo(5,0); ctx.lineTo(0,6); ctx.lineTo(-5,0); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle='#1a1a1a'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(-5,-31,4,0,Math.PI*2); ctx.arc(5,-31,4,0,Math.PI*2); ctx.moveTo(-1,-31); ctx.lineTo(1,-31); ctx.stroke();
+  } else if(boss.ability==='curse'){
+    // Penitente: capucha, sin brazos visibles
+    ctx.fillStyle='#1a0f1a'; ctx.beginPath(); ctx.moveTo(-14,-18); ctx.lineTo(-16,10); ctx.lineTo(16,10); ctx.lineTo(14,-18); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.arc(0,-30,15,Math.PI*0.15,Math.PI*0.85); ctx.fillStyle='#1a0f1a'; ctx.fill();
   } else {
     // banda/adorno distintivo con el color del mapa
     ctx.beginPath(); ctx.ellipse(0,-38,15,4,0,0,Math.PI*2); ctx.fillStyle=m.accent; ctx.globalAlpha=0.8; ctx.fill(); ctx.globalAlpha=1;
