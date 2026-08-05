@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Asedio Tecalitlán</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rubik:wght@400;600;800&display=swap');
+
+  :root{
+    --sunset:#FF6B35;
+    --gold:#FFB627;
+    --turquoise:#2EC4B6;
+    --dusk:#6A0572;
+    --shadow:#1A1423;
+    --paper:#F7F1E6;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none;}
+  html,body{margin:0; padding:0; width:100%; height:100%; height:100dvh; overflow:hidden; background:var(--shadow); font-family:'Rubik',sans-serif; position:fixed;}
+  #wrap{position:relative; width:100vw; height:100vh; height:100dvh;}
+  canvas{display:block; width:100%; height:100%; background:linear-gradient(180deg,#3a1f4d 0%, #7a2f4a 35%, #d9612f 75%, #b4491f 100%);}
+
+  .hud{position:absolute; top:0; left:0; width:100%; padding:12px 16px; display:flex; justify-content:space-between; align-items:flex-start; pointer-events:none; z-index:5;}
+  .hud-block{background:rgba(26,20,35,0.72); border:2px solid var(--gold); border-radius:10px; padding:8px 14px; color:var(--paper); font-family:'Bebas Neue',sans-serif; letter-spacing:1px;}
+  .hud-title{font-size:22px; color:var(--gold);}
+  .hud-row{display:flex; align-items:center; gap:8px; margin-top:2px;}
+  .bar{width:130px; height:12px; background:rgba(0,0,0,0.5); border-radius:6px; overflow:hidden; border:1px solid rgba(255,255,255,0.3);}
+  .bar-fill{height:100%; background:linear-gradient(90deg,var(--turquoise),#7fe9df);}
+  .bar-fill.base{background:linear-gradient(90deg,var(--sunset),var(--gold));}
+  .bar-fill.power{background:linear-gradient(90deg,#ffe27a,var(--gold));}
+  .label{font-size:13px; font-family:'Rubik',sans-serif; font-weight:600;}
+
+  #powerTimer{position:absolute; top:80px; left:50%; transform:translateX(-50%); color:var(--gold); font-family:'Bebas Neue'; font-size:20px; text-shadow:0 0 8px rgba(255,182,39,0.9); display:none; z-index:6;}
+
+  #waveBanner{position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); font-family:'Bebas Neue'; color:var(--paper); font-size:15vw; text-shadow:0 4px 20px rgba(0,0,0,0.6); opacity:0; pointer-events:none; z-index:6; text-align:center; line-height:0.9;}
+  #waveBanner span{display:block; font-size:0.28em; color:var(--gold); letter-spacing:3px;}
+
+  #startScreen,#endScreen{position:absolute; inset:0; background:radial-gradient(ellipse at center, #7a2f4a 0%, #241326 80%); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:20; text-align:center; padding:20px;}
+  #startScreen h1{font-family:'Bebas Neue'; font-size:min(14vw,72px); color:var(--gold); margin:0; letter-spacing:2px; text-shadow:0 4px 0 rgba(0,0,0,0.4);}
+  #startScreen h2{font-family:'Rubik'; font-weight:400; color:var(--paper); opacity:0.85; margin:6px 0 28px; font-size:15px;}
+  .chars{display:flex; gap:14px; flex-wrap:wrap; justify-content:center; max-width:520px; margin-bottom:26px;}
+  .charCard{width:96px; padding:12px 6px; background:rgba(0,0,0,0.35); border:3px solid transparent; border-radius:12px; cursor:pointer; transition:.15s; color:var(--paper);}
+  .charCard.selected{border-color:var(--gold); background:rgba(255,182,39,0.18); transform:translateY(-4px);}
+  .charDot{width:34px; height:34px; border-radius:50%; margin:0 auto 8px; border:2px solid rgba(255,255,255,0.5);}
+  .charName{font-family:'Bebas Neue'; font-size:15px; letter-spacing:1px;}
+  .charPower{font-size:10px; opacity:0.75; margin-top:2px; line-height:1.2;}
+
+  button.playBtn{font-family:'Bebas Neue'; font-size:24px; letter-spacing:2px; background:var(--sunset); color:var(--paper); border:none; padding:14px 40px; border-radius:40px; cursor:pointer; box-shadow:0 6px 0 #a8401c; transition:.1s;}
+  button.playBtn:active{transform:translateY(4px); box-shadow:0 2px 0 #a8401c;}
+
+  .mapLabel{font-family:'Rubik'; color:var(--turquoise); font-size:12px; letter-spacing:2px; text-transform:uppercase; margin-bottom:2px;}
+
+  .credit{position:absolute; bottom:14px; left:0; right:0; text-align:center; font-family:'Rubik'; font-size:11px; letter-spacing:2px; color:rgba(247,241,230,0.5);}
+  #inGameCredit{position:absolute; bottom:6px; right:10px; font-family:'Rubik'; font-size:10px; letter-spacing:1px; color:rgba(247,241,230,0.35); z-index:5; pointer-events:none;}
+
+  #endScreen{display:none;}
+  #endScreen h1{font-family:'Bebas Neue'; font-size:min(12vw,60px); color:var(--gold);}
+  #endStats{color:var(--paper); font-size:16px; margin:10px 0 24px;}
+
+  /* touch controls */
+  #touchLayer{position:absolute; inset:0; z-index:8; display:none;}
+  .stick-base{position:absolute; width:110px; height:110px; border-radius:50%; background:rgba(247,241,230,0.12); border:2px solid rgba(247,241,230,0.4);}
+  .stick-nub{position:absolute; width:48px; height:48px; border-radius:50%; background:rgba(255,182,39,0.55); border:2px solid var(--gold); left:31px; top:31px; pointer-events:none;}
+  #moveStick{left:24px; bottom:24px;}
+  #aimStick{right:24px; bottom:24px;}
+  #powerBtn{position:absolute; right:24px; bottom:150px; width:64px; height:64px; border-radius:50%; background:rgba(46,196,182,0.3); border:2px solid var(--turquoise); color:var(--paper); font-family:'Bebas Neue'; font-size:11px; display:flex; align-items:center; justify-content:center; text-align:center; pointer-events:auto;}
+
+  #ctrlHint{position:absolute; bottom:10px; left:50%; transform:translateX(-50%); color:rgba(247,241,230,0.55); font-size:11px; z-index:5; letter-spacing:0.5px;}
+  #fsBtn{position:absolute; top:10px; right:10px; z-index:9; width:34px; height:34px; border-radius:8px; background:rgba(26,20,35,0.6); border:1px solid rgba(255,182,39,0.5); color:var(--gold); font-size:16px; display:none; align-items:center; justify-content:center;}
+
+  #rotateOverlay{position:fixed; inset:0; background:var(--shadow); z-index:100; display:none; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px;}
+  #rotateOverlay .icon{font-size:54px; margin-bottom:14px; animation:rotateHint 1.6s ease-in-out infinite;}
+  #rotateOverlay h2{font-family:'Bebas Neue'; color:var(--gold); font-size:28px; letter-spacing:1px; margin:0 0 8px;}
+  #rotateOverlay p{color:var(--paper); opacity:0.8; font-size:14px; max-width:320px; margin:0;}
+  @keyframes rotateHint{ 0%,100%{transform:rotate(0deg);} 50%{transform:rotate(90deg);} }
+  @media (max-width:900px){
+    body.is-touch #rotateOverlay.active{ display:flex; }
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game"></canvas>
+
+  <div class="hud" id="hud" style="display:none;">
+    <div class="hud-block">
+      <div class="mapLabel">Mapa 1 · Centro de Tecalitlán</div>
+      <div class="hud-title" id="waveLabel">OLEADA 1</div>
+      <div class="hud-row"><span class="label">BASE</span><div class="bar"><div class="bar-fill base" id="baseBar" style="width:100%"></div></div></div>
+      <div class="hud-row"><span class="label">VIDA</span><div class="bar"><div class="bar-fill" id="hpBar" style="width:100%"></div></div></div>
+    </div>
+    <div class="hud-block" style="text-align:right;">
+      <div class="label" style="color:var(--gold)">KILLS</div>
+      <div class="hud-title" id="killLabel">0</div>
+    </div>
+  </div>
+
+  <div id="powerTimer"></div>
+  <div id="waveBanner"></div>
+
+  <div id="startScreen">
+    <div class="mapLabel">Mapa 1 de 8 · Prototipo</div>
+    <h1>ASEDIO TECALITLÁN</h1>
+    <h2>Elige a tu guerrero y defiende la plaza</h2>
+    <div class="chars" id="charSelect"></div>
+    <button class="playBtn" id="playBtn">JUGAR</button>
+    <div id="fsHint" style="color:rgba(247,241,230,0.55); font-size:11px; margin-top:14px; max-width:280px; line-height:1.4;"></div>
+    <div class="credit">CHAVARRÍA PRODUCTION</div>
+  </div>
+
+  <div id="endScreen">
+    <h1 id="endTitle">BASE DESTRUIDA</h1>
+    <div id="endStats"></div>
+    <button class="playBtn" id="retryBtn">REINTENTAR</button>
+    <div class="credit">CHAVARRÍA PRODUCTION</div>
+  </div>
+
+  <div id="touchLayer">
+    <div class="stick-base" id="moveStick"><div class="stick-nub" id="moveNub"></div></div>
+    <div class="stick-base" id="aimStick"><div class="stick-nub" id="aimNub"></div></div>
+    <div id="powerBtn">PODER</div>
+  </div>
+
+  <div id="ctrlHint"></div>
+  <div id="inGameCredit">©AARÓN CHAVARRÍA</div>
+  <button id="fsBtn" title="Pantalla completa">⛶</button>
+
+  <div id="rotateOverlay">
+    <div class="icon">📱</div>
+    <h2>GIRA TU TELÉFONO</h2>
+    <p>Asedio Tecalitlán se juega en horizontal, para que sostengas el celular cómodo con ambas manos en los joysticks.</p>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+// ---------- setup ----------
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+function resize(){
+  const vv = window.visualViewport;
+  const w = vv ? vv.width : window.innerWidth;
+  const h = vv ? vv.height : window.innerHeight;
+  canvas.width = w; canvas.height = h;
+  document.getElementById('wrap').style.width = w+'px';
+  document.getElementById('wrap').style.height = h+'px';
+}
+resize(); window.addEventListener('resize', resize);
+if(window.visualViewport){ window.visualViewport.addEventListener('resize', resize); window.visualViewport.addEventListener('scroll', resize); }
+
+const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+document.getElementById('ctrlHint').textContent = isTouch
+  ? 'Joystick izq: moverte · Joystick der: apuntar/disparar · Botón: poder'
+  : 'WASD: moverte · Ratón: apuntar y disparar · Barra espaciadora: poder';
+
+// ---------- characters ----------
+const CHARACTERS = [
+  {id:'goku', name:'Goku', color:'#FF8A3D', power:'Kamehameha: rayo perforante', powerColor:'#8CE6FF', hair:'#1a1a1a', hairStyle:'spiky', skin:'#e8b48a', accessory:'gi'},
+  {id:'gohan', name:'Gohan', color:'#3D6BFF', power:'Masenko: ráfaga frontal', powerColor:'#FFD86B', hair:'#1a1a1a', hairStyle:'spikyShort', skin:'#e8b48a', accessory:'gi'},
+  {id:'trunks', name:'Trunks Futuro', color:'#6A0572', power:'Corte de energía potenciado', powerColor:'#B98CFF', hair:'#8a6b3d', hairStyle:'long', skin:'#e8b48a', accessory:'sword'},
+  {id:'android18', name:'Androide 18', color:'#FFD400', power:'Ráfagas de alta cadencia', powerColor:'#FFF3A0', hair:'#e8d840', hairStyle:'bob', skin:'#f0c8a0', accessory:'none'},
+  {id:'luffy', name:'Luffy', color:'#E4322B', power:'Onda de choque en cono', powerColor:'#FF9C8C', hair:'#2a2018', hairStyle:'short', skin:'#e8b48a', accessory:'strawhat'},
+  {id:'zoro', name:'Zoro', color:'#2EC4B6', power:'Tajo en abanico', powerColor:'#B6FFF3', hair:'#3a7a5a', hairStyle:'short', skin:'#e8b48a', accessory:'sword'},
+];
+let selectedChar = CHARACTERS[0];
+
+const charSelectEl = document.getElementById('charSelect');
+CHARACTERS.forEach((c,i)=>{
+  const card = document.createElement('div');
+  card.className = 'charCard' + (i===0?' selected':'');
+  card.innerHTML = `<div class="charDot" style="background:${c.color}"></div><div class="charName">${c.name}</div><div class="charPower">${c.power}</div>`;
+  card.addEventListener('click', ()=>{
+    selectedChar = c;
+    [...charSelectEl.children].forEach(el=>el.classList.remove('selected'));
+    card.classList.add('selected');
+  });
+  charSelectEl.appendChild(card);
+});
+
+// ---------- game state ----------
+let state = 'menu'; // menu | playing | over
+let wave = 1;
+let kills = 0;
+let baseHP = 100, baseMaxHP = 100;
+let playerHP = 100, playerMaxHP = 100;
+let zombies = [];
+let bullets = [];
+let particles = [];
+let pickups = []; // {type:'rifle'|'ammo'|'orb', x,y}
+let ammo = 18, maxAmmo = 18, hasRifle = false;
+let fireCooldown = 0;
+let powerActive = false, powerTimeLeft = 0, POWER_DURATION = 60;
+let bossActive = false, boss = null;
+let waveInProgress = false, zombiesToSpawn = 0, spawnTimer = 0;
+let lastTime = 0;
+
+const BASE_X_RATIO = 0.5, BASE_Y_RATIO = 0.5;
+let baseX=0, baseY=0, baseRadius=70;
+
+const player = {x:0,y:0,radius:16,speed:230,angle:0};
+
+function resetGame(){
+  wave = 1; kills = 0; baseHP = baseMaxHP; playerHP = playerMaxHP;
+  zombies = []; bullets = []; particles = []; pickups = [];
+  ammo = maxAmmo; hasRifle = false;
+  powerActive = false; powerTimeLeft = 0;
+  bossActive = false; boss = null;
+  waveInProgress = false;
+  baseX = canvas.width*BASE_X_RATIO; baseY = canvas.height*BASE_Y_RATIO;
+  player.x = baseX; player.y = baseY - 120;
+  spawnPickup('rifle', baseX+140, baseY-40);
+}
+
+// ---------- input ----------
+const keys = {};
+window.addEventListener('keydown', e=>{ keys[e.key.toLowerCase()]=true; if(e.key===' ') activatePower(); });
+window.addEventListener('keyup', e=>{ keys[e.key.toLowerCase()]=false; });
+
+let mouse = {x:0,y:0,down:false};
+canvas.addEventListener('mousemove', e=>{ const r=canvas.getBoundingClientRect(); mouse.x=e.clientX-r.left; mouse.y=e.clientY-r.top; });
+canvas.addEventListener('mousedown', ()=>{ mouse.down=true; });
+window.addEventListener('mouseup', ()=>{ mouse.down=false; });
+
+// touch sticks
+let moveVec = {x:0,y:0}, aimVec = {x:0,y:0}, aimActive=false;
+function setupStick(baseEl, nubEl, onMove, onEnd){
+  let touchId = null, cx=0, cy=0;
+  const rect = ()=>baseEl.getBoundingClientRect();
+  baseEl.addEventListener('touchstart', e=>{
+    e.preventDefault();
+    const t = e.changedTouches[0]; touchId = t.identifier;
+    const r = rect(); cx = r.left+r.width/2; cy = r.top+r.height/2;
+  }, {passive:false});
+  window.addEventListener('touchmove', e=>{
+    for(const t of e.changedTouches){
+      if(t.identifier===touchId){
+        let dx=t.clientX-cx, dy=t.clientY-cy;
+        const max=45; const dist=Math.hypot(dx,dy);
+        if(dist>max){ dx=dx/dist*max; dy=dy/dist*max; }
+        nubEl.style.left = (31+dx)+'px'; nubEl.style.top=(31+dy)+'px';
+        onMove(dx/max, dy/max);
+      }
+    }
+  }, {passive:false});
+  window.addEventListener('touchend', e=>{
+    for(const t of e.changedTouches){
+      if(t.identifier===touchId){
+        touchId=null; nubEl.style.left='31px'; nubEl.style.top='31px'; onEnd();
+      }
+    }
+  });
+}
+if(isTouch){
+  document.body.classList.add('is-touch');
+  document.getElementById('touchLayer').style.display='block';
+  setupStick(document.getElementById('moveStick'), document.getElementById('moveNub'),
+    (x,y)=>{ moveVec.x=x; moveVec.y=y; }, ()=>{ moveVec.x=0; moveVec.y=0; });
+  setupStick(document.getElementById('aimStick'), document.getElementById('aimNub'),
+    (x,y)=>{ aimVec.x=x; aimVec.y=y; aimActive = Math.hypot(x,y)>0.25; }, ()=>{ aimActive=false; });
+  document.getElementById('powerBtn').addEventListener('touchstart', e=>{ e.preventDefault(); activatePower(); });
+}
+
+// ---------- orientation lock (mobile) ----------
+const rotateOverlay = document.getElementById('rotateOverlay');
+function isPortrait(){ return window.innerHeight > window.innerWidth; }
+function updateOrientationOverlay(){
+  if(isTouch && isPortrait()){ rotateOverlay.classList.add('active'); }
+  else { rotateOverlay.classList.remove('active'); }
+}
+async function tryLockLandscape(){
+  const hint = document.getElementById('fsHint');
+  let fsOk = false;
+  try{
+    if(document.documentElement.requestFullscreen){
+      await document.documentElement.requestFullscreen({navigationUI:'hide'});
+      fsOk = true;
+    } else if(document.documentElement.webkitRequestFullscreen){
+      document.documentElement.webkitRequestFullscreen();
+      fsOk = true;
+    }
+  }catch(err){ fsOk = false; }
+  try{
+    if(screen.orientation && screen.orientation.lock){ await screen.orientation.lock('landscape'); }
+  }catch(err){ /* algunos navegadores solo permiten esto en pantalla completa o PWA instalada */ }
+  if(!fsOk && hint){
+    hint.textContent = 'Si la barra del navegador no desaparece, abre este archivo directamente en Chrome (no en una vista previa) y vuelve a tocar JUGAR.';
+  }
+}
+window.addEventListener('resize', updateOrientationOverlay);
+window.addEventListener('orientationchange', updateOrientationOverlay);
+updateOrientationOverlay();
+
+// Activa pantalla completa en el primer toque del usuario (ej. al elegir personaje),
+// sin necesidad de un botón dedicado — los navegadores exigen un gesto real del usuario.
+if(isTouch){
+  const firstTouchFS = ()=>{ tryLockLandscape(); };
+  document.addEventListener('touchstart', firstTouchFS, {once:true, passive:true});
+}
+
+// ---------- helpers ----------
+function dist(ax,ay,bx,by){ return Math.hypot(ax-bx, ay-by); }
+function spawnPickup(type,x,y){ pickups.push({type,x,y,bob:Math.random()*Math.PI*2}); }
+
+function activatePower(){
+  if(powerActive || bossIntroLock) return;
+  powerActive = true; powerTimeLeft = POWER_DURATION;
+  document.getElementById('powerTimer').style.display='block';
+}
+
+// ---------- zombie / boss factories ----------
+function spawnZombie(kind){
+  const edge = Math.floor(Math.random()*4);
+  let x,y;
+  const W=canvas.width, H=canvas.height;
+  if(edge===0){ x=Math.random()*W; y=-30; }
+  else if(edge===1){ x=W+30; y=Math.random()*H; }
+  else if(edge===2){ x=Math.random()*W; y=H+30; }
+  else { x=-30; y=Math.random()*H; }
+  const tier = kind || 'normal';
+  const baseHpZ = 30 + (wave-1)*6;
+  const decayRoll = Math.random();
+  const decayTone = decayRoll>0.66 ? 'muyDesgastado' : (decayRoll>0.33 ? 'desgastado' : 'bueno');
+  zombies.push({
+    x,y, radius:15, speed: 55+Math.random()*20+wave*1.5,
+    hp: baseHpZ, maxHp: baseHpZ, dmg: 6+wave*0.5,
+    kind: tier, decay: decayTone, wobble: Math.random()*Math.PI*2
+  });
+}
+
+function spawnMariachiZombie(){
+  const decayRoll = Math.random();
+  let decay = 'bueno';
+  if(decayRoll>0.66) decay='muyDesgastado';
+  else if(decayRoll>0.33) decay='desgastado';
+  const edge = Math.floor(Math.random()*4);
+  const W=canvas.width, H=canvas.height;
+  let x,y;
+  if(edge===0){ x=Math.random()*W; y=-30; } else if(edge===1){ x=W+30; y=Math.random()*H; }
+  else if(edge===2){ x=Math.random()*W; y=H+30; } else { x=-30; y=Math.random()*H; }
+  const baseHpZ = 26 + (wave-1)*5;
+  zombies.push({x,y,radius:15,speed:60+Math.random()*15,hp:baseHpZ,maxHp:baseHpZ,dmg:6,kind:'mariachi',decay,wobble:Math.random()*Math.PI*2});
+}
+
+let bossIntroLock = false;
+function spawnBoss(){
+  bossActive = true;
+  boss = {
+    x: canvas.width/2, y: -80, radius:34, speed:38,
+    hp: 900 + wave*40, maxHp: 900+wave*40,
+    phase:'approach', summonTimer:3, bellTimer:6, targetY: canvas.height*0.28
+  };
+  bossIntroLock = true;
+  showBanner('¡EL MARIACHI CAÍDO!', 'JEFE DEL CENTRO DE TECALITLÁN');
+  setTimeout(()=>{ bossIntroLock=false; }, 1800);
+}
+
+// ---------- wave management ----------
+const WAVES_BEFORE_BOSS = 4;
+function startWave(){
+  waveInProgress = true;
+  if(wave <= WAVES_BEFORE_BOSS){
+    zombiesToSpawn = 5 + wave*3;
+    spawnTimer = 0;
+    showBanner('OLEADA ' + wave, wave===1 ? 'DEFIENDE LA PLAZA' : 'MÁS ZOMBIES SE ACERCAN');
+  } else {
+    spawnBoss();
+  }
+}
+
+function showBanner(main, sub){
+  const el = document.getElementById('waveBanner');
+  el.innerHTML = main + (sub ? `<span>${sub}</span>` : '');
+  el.style.transition = 'none'; el.style.opacity='1'; el.style.transform='translate(-50%,-50%) scale(1.08)';
+  requestAnimationFrame(()=>{
+    el.style.transition = 'opacity 1.2s ease, transform 1.2s ease';
+    setTimeout(()=>{ el.style.opacity='0'; el.style.transform='translate(-50%,-50%) scale(1)'; }, 900);
+  });
+}
+
+// ---------- combat ----------
+function shoot(angle){
+  if(fireCooldown>0) return;
+  if(!powerActive){
+    if(hasRifle){ if(ammo<=0) return; ammo--; }
+  }
+  const dmg = powerActive ? 55 : (hasRifle ? 22 : 12);
+  const speedB = 620;
+  const pierce = powerActive ? 3 : (hasRifle?1:0);
+  bullets.push({
+    x: player.x + Math.cos(angle)*player.radius, y: player.y+Math.sin(angle)*player.radius,
+    vx: Math.cos(angle)*speedB, vy: Math.sin(angle)*speedB,
+    dmg, life: 1.1, pierce, power: powerActive
+  });
+  fireCooldown = powerActive ? 0.07 : (hasRifle? 0.14 : 0.32);
+}
+
+function damageZombie(z, dmg, idx){
+  z.hp -= dmg;
+  particles.push({x:z.x,y:z.y,life:0.2,type:'hit'});
+  if(z.hp<=0){
+    kills++;
+    particles.push({x:z.x,y:z.y,life:0.4,type:'death', color: z.kind==='mariachi' ? '#FFB627':'#ff5b5b'});
+    if(Math.random()<0.12) spawnPickup(Math.random()<0.5?'ammo':'orb', z.x, z.y);
+    zombies.splice(idx,1);
+  }
+}
+
+// ---------- update ----------
+function update(dt){
+  if(state!=='playing') return;
+
+  // movement input
+  let mx=0,my=0;
+  if(isTouch){ mx=moveVec.x; my=moveVec.y; }
+  else{
+    if(keys['w']||keys['arrowup']) my-=1;
+    if(keys['s']||keys['arrowdown']) my+=1;
+    if(keys['a']||keys['arrowleft']) mx-=1;
+    if(keys['d']||keys['arrowright']) mx+=1;
+    const len=Math.hypot(mx,my); if(len>0){ mx/=len; my/=len; }
+  }
+  player.x += mx*player.speed*dt;
+  player.y += my*player.speed*dt;
+  player.x = Math.max(20, Math.min(canvas.width-20, player.x));
+  player.y = Math.max(20, Math.min(canvas.height-20, player.y));
+
+  // aim + fire
+  let aimAngle = player.angle;
+  let firing = false;
+  if(isTouch){
+    if(aimActive){ aimAngle = Math.atan2(aimVec.y, aimVec.x); firing = true; }
+  } else {
+    aimAngle = Math.atan2(mouse.y-player.y, mouse.x-player.x);
+    firing = mouse.down;
+  }
+  player.angle = aimAngle;
+  fireCooldown -= dt;
+  if(firing && fireCooldown<=0) shoot(aimAngle);
+
+  // power timer
+  if(powerActive){
+    powerTimeLeft -= dt;
+    document.getElementById('powerTimer').textContent = 'PODER · ' + Math.ceil(powerTimeLeft) + 's';
+    if(powerTimeLeft<=0){ powerActive=false; document.getElementById('powerTimer').style.display='none'; }
+  }
+
+  // bullets
+  for(let i=bullets.length-1;i>=0;i--){
+    const b=bullets[i];
+    b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=dt;
+    if(b.life<=0 || b.x<-20||b.x>canvas.width+20||b.y<-20||b.y>canvas.height+20){ bullets.splice(i,1); continue; }
+    let hitSomething=false;
+    for(let j=zombies.length-1;j>=0;j--){
+      const z=zombies[j];
+      if(dist(b.x,b.y,z.x,z.y) < z.radius+4){
+        damageZombie(z,b.dmg,j);
+        hitSomething=true;
+        if(b.pierce>0){ b.pierce--; } else { bullets.splice(i,1); }
+        break;
+      }
+    }
+    if(hitSomething && b.pierce<=0) continue;
+    if(boss && dist(b.x,b.y,boss.x,boss.y) < boss.radius+4){
+      boss.hp -= b.dmg;
+      particles.push({x:b.x,y:b.y,life:0.2,type:'hit'});
+      bullets.splice(i,1);
+    }
+  }
+
+  // spawn logic
+  if(!bossActive && waveInProgress){
+    spawnTimer -= dt;
+    if(zombiesToSpawn>0 && spawnTimer<=0){
+      spawnZombie(); zombiesToSpawn--; spawnTimer = Math.max(0.25, 0.9 - wave*0.05);
+    }
+    if(zombiesToSpawn<=0 && zombies.length===0){
+      waveInProgress = false;
+      wave++;
+      setTimeout(()=>{ if(state==='playing') startWave(); }, 1400);
+    }
+  }
+
+  // zombies AI
+  for(let i=zombies.length-1;i>=0;i--){
+    const z=zombies[i];
+    z.wobble += dt*4;
+    // target: base or player, whichever closer-ish (prefer base, like defense objective)
+    const dToBase = dist(z.x,z.y,baseX,baseY);
+    const dToPlayer = dist(z.x,z.y,player.x,player.y);
+    let tx=baseX, ty=baseY;
+    if(dToPlayer < 90 && dToPlayer < dToBase) { tx=player.x; ty=player.y; }
+    z.__tx=tx; z.__ty=ty;
+    const ang = Math.atan2(ty-z.y, tx-z.x);
+    z.x += Math.cos(ang)*z.speed*dt;
+    z.y += Math.sin(ang)*z.speed*dt;
+
+    if(dist(z.x,z.y,player.x,player.y) < z.radius+player.radius){
+      playerHP -= z.dmg*dt*2.2;
+      if(playerHP<0) playerHP=0;
+    }
+    if(dist(z.x,z.y,baseX,baseY) < baseRadius){
+      baseHP -= z.dmg*dt*1.6;
+      if(baseHP<0) baseHP=0;
+      zombies.splice(i,1);
+    }
+  }
+
+  // boss AI
+  if(boss){
+    if(boss.phase==='approach'){
+      boss.y += boss.speed*dt;
+      if(boss.y>=boss.targetY){ boss.phase='fight'; }
+    } else if(boss.phase==='fight'){
+      boss.x += Math.sin(Date.now()/900)*40*dt;
+      boss.summonTimer -= dt; boss.bellTimer -= dt;
+      if(boss.summonTimer<=0){ spawnMariachiZombie(); spawnMariachiZombie(); boss.summonTimer = 4.5 - Math.min(2,wave*0.05); }
+      if(boss.bellTimer<=0){
+        // bell shockwave damages player if close
+        if(dist(boss.x,boss.y,player.x,player.y) < 220){
+          playerHP -= 18; if(playerHP<0) playerHP=0;
+        }
+        particles.push({x:boss.x,y:boss.y,life:0.5,type:'shock'});
+        boss.bellTimer = 5.5;
+      }
+      if(dist(boss.x,boss.y,player.x,player.y) < boss.radius+player.radius+6){
+        playerHP -= 10*dt; if(playerHP<0) playerHP=0;
+      }
+    }
+    if(boss.hp<=0){
+      kills+=5;
+      particles.push({x:boss.x,y:boss.y,life:0.6,type:'death',color:'#FFB627'});
+      boss=null; bossActive=false;
+      showBanner('¡MAPA 1 SUPERADO!', 'El Mariachi Caído ha sido derrotado');
+      setTimeout(()=>{ endGame(true); }, 2200);
+    }
+  }
+
+  // pickups
+  for(let i=pickups.length-1;i>=0;i--){
+    const p=pickups[i]; p.bob+=dt*3;
+    if(dist(p.x,p.y,player.x,player.y) < player.radius+18){
+      if(p.type==='rifle'){ hasRifle=true; ammo=maxAmmo; }
+      else if(p.type==='ammo'){ ammo=Math.min(maxAmmo, ammo+10); }
+      else if(p.type==='orb'){ activatePower(); }
+      pickups.splice(i,1);
+    }
+  }
+
+  // particles
+  for(let i=particles.length-1;i>=0;i--){ particles[i].life-=dt; if(particles[i].life<=0) particles.splice(i,1); }
+
+  // lose condition
+  if(baseHP<=0 || playerHP<=0){ endGame(false); }
+
+  // HUD
+  document.getElementById('baseBar').style.width = Math.max(0,(baseHP/baseMaxHP*100))+'%';
+  document.getElementById('hpBar').style.width = Math.max(0,(playerHP/playerMaxHP*100))+'%';
+  document.getElementById('waveLabel').textContent = bossActive ? 'JEFE' : ('OLEADA ' + wave);
+  document.getElementById('killLabel').textContent = kills;
+}
+
+// ---------- render ----------
+function drawPlaza(){
+  const W=canvas.width,H=canvas.height;
+  // ground
+  ctx.fillStyle = '#8a4a2f';
+  ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  for(let i=0;i<40;i++){
+    ctx.fillRect((i*97)%W, (i*53)%H, 40,3);
+  }
+  // plaza tiled circle
+  ctx.save();
+  ctx.beginPath(); ctx.arc(baseX,baseY, baseRadius+90, 0, Math.PI*2); ctx.fillStyle='rgba(214,159,97,0.35)'; ctx.fill();
+  ctx.restore();
+  // church silhouette (top)
+  ctx.fillStyle = 'rgba(58,31,50,0.85)';
+  ctx.fillRect(W*0.42, H*0.02, W*0.16, H*0.22);
+  ctx.beginPath(); ctx.moveTo(W*0.42,H*0.02); ctx.lineTo(W*0.5,H*-0.02); ctx.lineTo(W*0.58,H*0.02); ctx.fill();
+  // museo Vargas block (left)
+  ctx.fillStyle='rgba(90,45,60,0.75)';
+  ctx.fillRect(W*0.04,H*0.06,W*0.18,H*0.14);
+  // base kiosko
+  ctx.beginPath(); ctx.arc(baseX,baseY,baseRadius,0,Math.PI*2);
+  ctx.fillStyle='rgba(255,182,39,0.22)'; ctx.fill();
+  ctx.strokeStyle='var(--gold)'; ctx.lineWidth=3; ctx.strokeStyle='#FFB627'; ctx.stroke();
+  ctx.fillStyle='#FFD86B'; ctx.font='bold 13px Rubik'; ctx.textAlign='center';
+  ctx.fillText('KIOSKO', baseX, baseY+5);
+}
+
+function drawHumanoid(x, y, angle, opts){
+  // opts: {skin, outfit, headR, bodyW, bodyH, limp, arms, gunLen, glow, tattered, hairStyle, hairColor, accessory}
+  const o = Object.assign({skin:'#e0a878', outfit:'#3d5a3d', headR:7, bodyW:14, bodyH:20, limp:0, arms:true, gunLen:16, glow:null, tattered:false, hairStyle:null, hairColor:'#1a1a1a', accessory:'none'}, opts);
+  const walkPhase = (o.limp ? Math.sin(Date.now()/260 + x*0.02) : Math.sin(Date.now()/140 + x*0.02)) * (o.limp?8:14);
+  ctx.save();
+  ctx.translate(x,y);
+
+  if(o.glow){ ctx.shadowColor=o.glow; ctx.shadowBlur=14; }
+
+  // legs (simple swinging lines)
+  ctx.strokeStyle = o.outfit; ctx.lineWidth = 5; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(-4, o.bodyH*0.35); ctx.lineTo(-4+walkPhase*0.3, o.bodyH*0.9); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(4, o.bodyH*0.35); ctx.lineTo(4-walkPhase*0.3, o.bodyH*0.9); ctx.stroke();
+
+  // rotate upper body toward facing angle
+  ctx.save();
+  ctx.rotate(angle);
+
+  // torso
+  ctx.fillStyle = o.outfit;
+  roundRect(-o.bodyW/2, -o.bodyH*0.55, o.bodyW, o.bodyH*0.9, 4);
+  ctx.fill();
+  if(o.tattered){
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    for(let i=0;i<3;i++){ ctx.fillRect(-o.bodyW/2 + i*5 - 1, o.bodyH*0.1, 3, 6); }
+  }
+  if(o.accessory==='gi' || o.accessory==='sword'){ drawAccessory(o.accessory, o.headR, o.bodyW, o.bodyH); }
+
+  // arms
+  if(o.arms){
+    ctx.strokeStyle = o.skin; ctx.lineWidth=4.5; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(-o.bodyW/2, -o.bodyH*0.35); ctx.lineTo(-o.bodyW/2-6, o.bodyH*0.05+ (o.limp?4:0)); ctx.stroke();
+    // front arm extends forward (aiming) if gun
+    ctx.beginPath(); ctx.moveTo(o.bodyW/2-2, -o.bodyH*0.35); ctx.lineTo(o.bodyW/2+o.gunLen, -o.bodyH*0.2); ctx.stroke();
+    // weapon line
+    if(o.gunLen>10){
+      ctx.strokeStyle='#cfcfcf'; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.moveTo(o.bodyW/2+o.gunLen, -o.bodyH*0.2); ctx.lineTo(o.bodyW/2+o.gunLen+10, -o.bodyH*0.2); ctx.stroke();
+    }
+  }
+
+  // head
+  ctx.save(); ctx.translate(0, -o.bodyH*0.72);
+  ctx.beginPath(); ctx.arc(0, 0, o.headR, 0, Math.PI*2);
+  ctx.fillStyle = o.skin; ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.35)'; ctx.lineWidth=1.4; ctx.stroke();
+  if(o.hairStyle){ drawHair(o.headR, o.hairStyle, o.hairColor); }
+  ctx.restore();
+  if(o.accessory==='strawhat'){ drawAccessory('strawhat', o.headR, o.bodyW, o.bodyH); }
+
+  ctx.restore(); // undo rotation
+  ctx.shadowBlur=0;
+  ctx.restore(); // undo translate
+}
+
+function roundRect(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+function drawHair(headR, style, hairColor){
+  ctx.fillStyle = hairColor;
+  if(style==='spiky'){
+    ctx.beginPath();
+    for(let i=-4;i<=4;i++){
+      const a = i*0.32;
+      ctx.moveTo(0,0);
+      ctx.lineTo(Math.sin(a)*headR*0.6, -headR*0.3);
+      ctx.lineTo(Math.sin(a+0.16)*headR*1.9, -headR*1.9);
+      ctx.lineTo(Math.sin(a+0.32)*headR*0.6, -headR*0.3);
+    }
+    ctx.fill();
+  } else if(style==='spikyShort'){
+    ctx.beginPath();
+    for(let i=-3;i<=3;i++){
+      const a=i*0.34;
+      ctx.moveTo(0,-headR*0.2);
+      ctx.lineTo(Math.sin(a)*headR*0.5,-headR*0.2);
+      ctx.lineTo(Math.sin(a+0.17)*headR*1.3,-headR*1.4);
+      ctx.lineTo(Math.sin(a+0.34)*headR*0.5,-headR*0.2);
+    }
+    ctx.fill();
+  } else if(style==='long'){
+    ctx.beginPath(); ctx.ellipse(0,-headR*0.4,headR*1.05,headR*0.85,0,Math.PI,0); ctx.fill();
+    ctx.fillRect(-headR*1.1,-headR*0.3,headR*0.5,headR*1.6);
+    ctx.fillRect(headR*0.6,-headR*0.3,headR*0.5,headR*1.6);
+  } else if(style==='bob'){
+    ctx.beginPath(); ctx.ellipse(0,-headR*0.25,headR*1.1,headR*0.95,0,Math.PI,0); ctx.fill();
+    ctx.fillRect(-headR*1.15,-headR*0.2,headR*0.4,headR*1.1);
+    ctx.fillRect(headR*0.75,-headR*0.2,headR*0.4,headR*1.1);
+  } else { // short
+    ctx.beginPath(); ctx.ellipse(0,-headR*0.35,headR*1.02,headR*0.8,0,Math.PI,0); ctx.fill();
+  }
+}
+
+function drawAccessory(type, headR, bodyW, bodyH, tint){
+  if(type==='strawhat'){
+    ctx.fillStyle='#e8c878';
+    ctx.beginPath(); ctx.ellipse(0,-bodyH*0.72-headR*0.9,headR*2.1,headR*0.6,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#d4b060'; ctx.beginPath(); ctx.arc(0,-bodyH*0.72-headR*1.5,headR*1.1,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#a8360c'; ctx.lineWidth=2.5; ctx.beginPath(); ctx.moveTo(-headR,-bodyH*0.72-headR*0.75); ctx.lineTo(headR,-bodyH*0.72-headR*0.75); ctx.stroke();
+  } else if(type==='sword'){
+    ctx.save();
+    ctx.translate(-bodyW*0.3, -bodyH*0.1);
+    ctx.rotate(-0.5);
+    ctx.fillStyle='#d8d8d8'; ctx.fillRect(-2,-26,4,26);
+    ctx.fillStyle='#3a2a1a'; ctx.fillRect(-3,0,6,7);
+    ctx.restore();
+  } else if(type==='gi'){
+    ctx.fillStyle='rgba(0,0,0,0.18)';
+    ctx.beginPath(); ctx.moveTo(-2,-bodyH*0.5); ctx.lineTo(2,-bodyH*0.5); ctx.lineTo(0,bodyH*0.25); ctx.closePath(); ctx.fill();
+  }
+}
+
+function drawPlayer(){
+  const c = selectedChar;
+  drawHumanoid(player.x, player.y, player.angle, {
+    skin: c.skin,
+    outfit: powerActive ? c.powerColor : c.color,
+    headR: 7.5, bodyW: 15, bodyH: 22,
+    gunLen: hasRifle ? 20 : 12,
+    glow: powerActive ? c.powerColor : null,
+    hairStyle: c.hairStyle, hairColor: powerActive ? '#ffe27a' : c.hair,
+    accessory: c.accessory
+  });
+  if(powerActive){
+    ctx.beginPath(); ctx.arc(player.x,player.y-8,player.radius+10,0,Math.PI*2);
+    ctx.strokeStyle=c.powerColor; ctx.lineWidth=2; ctx.globalAlpha=0.55; ctx.stroke(); ctx.globalAlpha=1;
+  }
+}
+
+// tonos de piel según nivel de descomposición
+function decaySkin(decay){
+  if(decay==='bueno') return '#8fae7a';        // verdoso pálido, recién caído
+  if(decay==='desgastado') return '#7a9a6a';    // verde grisáceo, más avanzado
+  return '#6b7a5e';                             // gris verdoso apagado, muy descompuesto
+}
+function decayOutfit(decay, mariachi){
+  if(mariachi){
+    if(decay==='bueno') return '#241f2e';        // traje de charro casi intacto
+    if(decay==='desgastado') return '#3a3230';   // deslucido, manchado
+    return '#4a4038';                            // deshilachado, casi irreconocible
+  }
+  if(decay==='bueno') return '#3d5a3d';
+  if(decay==='desgastado') return '#4a5a3a';
+  return '#5a5a45';
+}
+
+function drawZombieHumanoid(z){
+  const wob = Math.sin(z.wobble)*2;
+  const x = z.x+wob, y = z.y;
+  const angleToTarget = z.__ang || 0;
+  const mariachi = z.kind==='mariachi';
+  const tattered = mariachi ? z.decay!=='bueno' : true;
+  const limp = mariachi ? (z.decay==='muyDesgastado'?1:0.5) : 0.6;
+
+  ctx.save();
+  ctx.translate(x,y);
+  const swing = Math.sin(z.wobble*1.4)* (5+limp*4);
+
+  // legs (uneven, shambling)
+  ctx.strokeStyle = decayOutfit(z.decay, mariachi); ctx.lineWidth=5; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(-4,8); ctx.lineTo(-4+swing*0.4, 20); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(4,8); ctx.lineTo(4-swing*0.35, 19); ctx.stroke();
+
+  ctx.save();
+  ctx.rotate(angleToTarget);
+  // torso hunched
+  ctx.fillStyle = decayOutfit(z.decay, mariachi);
+  roundRect(-7,-13,14,18,3); ctx.fill();
+  if(tattered){
+    ctx.fillStyle='rgba(0,0,0,0.3)';
+    ctx.fillRect(-6,2,3,5); ctx.fillRect(2,-4,3,6);
+  }
+  // arms reaching forward
+  ctx.strokeStyle = decaySkin(z.decay); ctx.lineWidth=4.2; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(-6,-9); ctx.lineTo(-2+10, -2+swing*0.2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(6,-9); ctx.lineTo(2+13, 2+swing*0.15); ctx.stroke();
+  // head, tilted
+  ctx.save(); ctx.translate(0,-17); ctx.rotate(0.25);
+  ctx.beginPath(); ctx.arc(0,0,6.4,0,Math.PI*2); ctx.fillStyle=decaySkin(z.decay); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.4)'; ctx.lineWidth=1.2; ctx.stroke();
+  ctx.restore();
+  if(mariachi){
+    ctx.beginPath(); ctx.ellipse(0,-24,12,4.5,0,0,Math.PI*2);
+    ctx.fillStyle= z.decay==='muyDesgastado' ? 'rgba(74,64,56,0.85)' : '#241f18'; ctx.fill();
+  }
+  ctx.restore();
+  ctx.restore();
+
+  // hp bar
+  ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(z.x-16,z.y-32,32,4);
+  ctx.fillStyle= mariachi ? '#FFB627' : '#ff5b5b'; ctx.fillRect(z.x-16,z.y-32,32*(z.hp/z.maxHp),4);
+}
+
+function drawZombies(){
+  for(const z of zombies){
+    z.__ang = Math.atan2((z.__ty||baseY)-z.y, (z.__tx||baseX)-z.x);
+    drawZombieHumanoid(z);
+  }
+}
+
+function drawBoss(){
+  if(!boss) return;
+  const bobY = Math.sin(Date.now()/300)*3;
+  ctx.save();
+  ctx.translate(boss.x, boss.y+bobY);
+  // legs
+  ctx.strokeStyle='#241f2e'; ctx.lineWidth=9; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(-9,18); ctx.lineTo(-11,40); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(9,18); ctx.lineTo(11,40); ctx.stroke();
+  // torso — traje de charro ajado
+  ctx.fillStyle='#241f2e';
+  roundRect(-18,-22,36,42,6); ctx.fill();
+  ctx.strokeStyle='#FFB627'; ctx.lineWidth=2;
+  for(let i=-1;i<=1;i++){ ctx.beginPath(); ctx.moveTo(i*10,-20); ctx.lineTo(i*10,18); ctx.stroke(); }
+  // arms
+  ctx.strokeStyle='#6b7a5e'; ctx.lineWidth=8; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(-16,-10); ctx.lineTo(-34, 10+Math.sin(Date.now()/400)*8); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(16,-10); ctx.lineTo(34, 10-Math.sin(Date.now()/400)*8); ctx.stroke();
+  // head
+  ctx.beginPath(); ctx.arc(0,-30,13,0,Math.PI*2); ctx.fillStyle='#6b7a5e'; ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.4)'; ctx.lineWidth=1.6; ctx.stroke();
+  // sombrero grande
+  ctx.beginPath(); ctx.ellipse(0,-40,32,10,0,0,Math.PI*2);
+  ctx.fillStyle='#241f18'; ctx.fill();
+  ctx.strokeStyle='#FFB627'; ctx.lineWidth=2; ctx.stroke();
+  ctx.beginPath(); ctx.arc(0,-48,9,0,Math.PI*2); ctx.fillStyle='#2e2820'; ctx.fill();
+  ctx.restore();
+
+  // hp bar top
+  const bw=Math.min(500,canvas.width*0.6);
+  ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(canvas.width/2-bw/2, 14, bw, 10);
+  ctx.fillStyle='#FFB627'; ctx.fillRect(canvas.width/2-bw/2,14,bw*(boss.hp/boss.maxHp),10);
+  ctx.fillStyle='#fff'; ctx.font='11px Rubik'; ctx.textAlign='center';
+  ctx.fillText('EL MARIACHI CAÍDO', canvas.width/2, 12);
+}
+
+function drawBullets(){
+  for(const b of bullets){
+    ctx.beginPath(); ctx.arc(b.x,b.y, b.power?6:3.5, 0, Math.PI*2);
+    ctx.fillStyle = b.power ? '#8CE6FF' : '#FFE9B0';
+    ctx.shadowColor = b.power ? '#8CE6FF' : 'transparent'; ctx.shadowBlur = b.power?14:0;
+    ctx.fill(); ctx.shadowBlur=0;
+  }
+}
+
+function drawPickups(){
+  for(const p of pickups){
+    const y = p.y + Math.sin(p.bob)*4;
+    ctx.beginPath();
+    if(p.type==='orb'){ ctx.arc(p.x,y,10,0,Math.PI*2); ctx.fillStyle='#8CE6FF'; ctx.shadowColor='#8CE6FF'; ctx.shadowBlur=16; }
+    else if(p.type==='rifle'){ ctx.rect(p.x-12,y-4,24,8); ctx.fillStyle='#c9c9c9'; }
+    else { ctx.rect(p.x-9,y-9,18,18); ctx.fillStyle='#FFB627'; }
+    ctx.fill(); ctx.shadowBlur=0;
+  }
+}
+
+function drawParticles(){
+  for(const p of particles){
+    ctx.globalAlpha = Math.max(0,p.life*2);
+    if(p.type==='hit'){ ctx.beginPath(); ctx.arc(p.x,p.y,4,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill(); }
+    else if(p.type==='death'){ ctx.beginPath(); ctx.arc(p.x,p.y,10*(1-p.life),0,Math.PI*2); ctx.strokeStyle=p.color||'#fff'; ctx.lineWidth=3; ctx.stroke(); }
+    else if(p.type==='shock'){ ctx.beginPath(); ctx.arc(p.x,p.y,220*(1-p.life),0,Math.PI*2); ctx.strokeStyle='#FFB627'; ctx.lineWidth=4; ctx.stroke(); }
+    ctx.globalAlpha=1;
+  }
+}
+
+function render(){
+  if(state!=='playing'){ return; }
+  drawPlaza();
+  drawPickups();
+  drawZombies();
+  drawBoss();
+  drawBullets();
+  drawPlayer();
+  drawParticles();
+}
+
+// ---------- loop ----------
+function loop(t){
+  const dt = Math.min(0.033, (t-lastTime)/1000 || 0);
+  lastTime = t;
+  update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ---------- screen flow ----------
+function startGame(){
+  document.getElementById('startScreen').style.display='none';
+  document.getElementById('endScreen').style.display='none';
+  document.getElementById('hud').style.display='flex';
+  if(isTouch){ document.getElementById('fsBtn').style.display='flex'; }
+  resetGame();
+  state='playing';
+  startWave();
+}
+function endGame(won){
+  state='over';
+  document.getElementById('hud').style.display='none';
+  document.getElementById('powerTimer').style.display='none';
+  document.getElementById('endScreen').style.display='flex';
+  document.getElementById('endTitle').textContent = won ? 'MAPA 1 SUPERADO' : 'BASE DESTRUIDA';
+  document.getElementById('endStats').textContent = `Oleada alcanzada: ${wave} · Kills: ${kills}`;
+}
+
+document.getElementById('playBtn').addEventListener('click', ()=>{ tryLockLandscape(); startGame(); });
+document.getElementById('retryBtn').addEventListener('click', startGame);
+document.getElementById('fsBtn').addEventListener('click', tryLockLandscape);
+
+})();
+</script>
+</body>
+</html>
