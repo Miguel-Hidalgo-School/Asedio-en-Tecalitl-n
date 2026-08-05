@@ -64,11 +64,12 @@
 
   /* touch controls */
   #touchLayer{position:absolute; inset:0; z-index:8; display:none;}
-  .stick-base{position:absolute; width:110px; height:110px; border-radius:50%; background:rgba(247,241,230,0.12); border:2px solid rgba(247,241,230,0.4);}
-  .stick-nub{position:absolute; width:48px; height:48px; border-radius:50%; background:rgba(255,182,39,0.55); border:2px solid var(--gold); left:31px; top:31px; pointer-events:none;}
-  #moveStick{left:24px; bottom:24px;}
-  #aimStick{right:24px; bottom:24px;}
-  #powerBtn{position:absolute; right:24px; bottom:150px; width:64px; height:64px; border-radius:50%; background:rgba(46,196,182,0.3); border:2px solid var(--turquoise); color:var(--paper); font-family:'Bebas Neue'; font-size:11px; display:flex; align-items:center; justify-content:center; text-align:center; pointer-events:auto;}
+  .touchZone{position:absolute; top:0; bottom:0; width:55%;}
+  #moveZone{left:0;}
+  #aimZone{right:0;}
+  .stick-base{position:absolute; width:110px; height:110px; border-radius:50%; background:rgba(247,241,230,0.12); border:2px solid rgba(247,241,230,0.4); transform:translate(-50%,-50%); display:none;}
+  .stick-nub{position:absolute; width:50px; height:50px; border-radius:50%; background:rgba(255,182,39,0.6); border:2px solid var(--gold); left:50%; top:50%; transform:translate(-50%,-50%); pointer-events:none;}
+  #powerBtn{position:absolute; right:24px; bottom:150px; width:64px; height:64px; border-radius:50%; background:rgba(46,196,182,0.3); border:2px solid var(--turquoise); color:var(--paper); font-family:'Bebas Neue'; font-size:11px; display:flex; align-items:center; justify-content:center; text-align:center; pointer-events:auto; z-index:9;}
 
   #ctrlHint{position:absolute; bottom:10px; left:50%; transform:translateX(-50%); color:rgba(247,241,230,0.55); font-size:11px; z-index:5; letter-spacing:0.5px;}
   #fsBtn{position:absolute; top:10px; right:10px; z-index:9; width:34px; height:34px; border-radius:8px; background:rgba(26,20,35,0.6); border:1px solid rgba(255,182,39,0.5); color:var(--gold); font-size:16px; display:none; align-items:center; justify-content:center;}
@@ -127,8 +128,12 @@
   </div>
 
   <div id="touchLayer">
-    <div class="stick-base" id="moveStick"><div class="stick-nub" id="moveNub"></div></div>
-    <div class="stick-base" id="aimStick"><div class="stick-nub" id="aimNub"></div></div>
+    <div class="touchZone" id="moveZone">
+      <div class="stick-base" id="moveStick"><div class="stick-nub" id="moveNub"></div></div>
+    </div>
+    <div class="touchZone" id="aimZone">
+      <div class="stick-base" id="aimStick"><div class="stick-nub" id="aimNub"></div></div>
+    </div>
     <div id="powerBtn">PODER</div>
   </div>
 
@@ -249,43 +254,61 @@ canvas.addEventListener('mousemove', e=>{ const r=canvas.getBoundingClientRect()
 canvas.addEventListener('mousedown', ()=>{ mouse.down=true; });
 window.addEventListener('mouseup', ()=>{ mouse.down=false; });
 
-// touch sticks
+// touch sticks — joystick flotante: aparece donde pongas el dedo, responde
+// de inmediato (deadzone mínima) y no necesita mantenerse "girado".
 let moveVec = {x:0,y:0}, aimVec = {x:0,y:0}, aimActive=false;
-function setupStick(baseEl, nubEl, onMove, onEnd){
-  let touchId = null, cx=0, cy=0;
-  const rect = ()=>baseEl.getBoundingClientRect();
-  baseEl.addEventListener('touchstart', e=>{
+function setupFloatingStick(zoneEl, baseEl, nubEl, onMove, onEnd){
+  let touchId = null, ox=0, oy=0;
+  const MAX = 42; // qué tan lejos hay que mover el dedo para llegar al 100%
+  zoneEl.addEventListener('touchstart', e=>{
     e.preventDefault();
     const t = e.changedTouches[0]; touchId = t.identifier;
-    const r = rect(); cx = r.left+r.width/2; cy = r.top+r.height/2;
+    ox = t.clientX; oy = t.clientY;
+    baseEl.style.left = ox+'px'; baseEl.style.top = oy+'px'; baseEl.style.display='block';
+    nubEl.style.left='50%'; nubEl.style.top='50%';
   }, {passive:false});
-  window.addEventListener('touchmove', e=>{
+  zoneEl.addEventListener('touchmove', e=>{
     for(const t of e.changedTouches){
       if(t.identifier===touchId){
-        let dx=t.clientX-cx, dy=t.clientY-cy;
-        const max=45; const dist=Math.hypot(dx,dy);
-        if(dist>max){ dx=dx/dist*max; dy=dy/dist*max; }
-        nubEl.style.left = (31+dx)+'px'; nubEl.style.top=(31+dy)+'px';
-        onMove(dx/max, dy/max);
+        let dx=t.clientX-ox, dy=t.clientY-oy;
+        const dist=Math.hypot(dx,dy);
+        const clamped = Math.min(dist, MAX);
+        const nx = dist>0 ? dx/dist : 0, ny = dist>0 ? dy/dist : 0;
+        nubEl.style.left = (55+nx*clamped)+'px'; nubEl.style.top = (55+ny*clamped)+'px';
+        if(dist > 4){ onMove(dx/MAX, dy/MAX, dist/MAX); }
+        else { onMove(0,0,0); }
       }
     }
   }, {passive:false});
-  window.addEventListener('touchend', e=>{
+  const endHandler = e=>{
     for(const t of e.changedTouches){
       if(t.identifier===touchId){
-        touchId=null; nubEl.style.left='31px'; nubEl.style.top='31px'; onEnd();
+        touchId=null; baseEl.style.display='none'; onEnd();
       }
     }
-  });
+  };
+  zoneEl.addEventListener('touchend', endHandler);
+  zoneEl.addEventListener('touchcancel', endHandler);
 }
 if(isTouch){
   document.body.classList.add('is-touch');
   document.getElementById('touchLayer').style.display='block';
-  setupStick(document.getElementById('moveStick'), document.getElementById('moveNub'),
-    (x,y)=>{ moveVec.x=x; moveVec.y=y; }, ()=>{ moveVec.x=0; moveVec.y=0; });
-  setupStick(document.getElementById('aimStick'), document.getElementById('aimNub'),
-    (x,y)=>{ aimVec.x=x; aimVec.y=y; aimActive = Math.hypot(x,y)>0.25; }, ()=>{ aimActive=false; });
-  document.getElementById('powerBtn').addEventListener('touchstart', e=>{ e.preventDefault(); activatePower(); });
+  setupFloatingStick(document.getElementById('moveZone'), document.getElementById('moveStick'), document.getElementById('moveNub'),
+    (x,y,mag)=>{
+      const len=Math.hypot(x,y);
+      if(len>0){ const clampedLen=Math.min(1,len); moveVec.x=(x/len)*clampedLen; moveVec.y=(y/len)*clampedLen; }
+      else { moveVec.x=0; moveVec.y=0; }
+    },
+    ()=>{ moveVec.x=0; moveVec.y=0; }
+  );
+  setupFloatingStick(document.getElementById('aimZone'), document.getElementById('aimStick'), document.getElementById('aimNub'),
+    (x,y,mag)=>{
+      aimVec.x=x; aimVec.y=y;
+      aimActive = mag>0.06; // umbral muy bajo: casi cualquier toque direccional dispara
+    },
+    ()=>{ aimActive=false; }
+  );
+  document.getElementById('powerBtn').addEventListener('touchstart', e=>{ e.preventDefault(); e.stopPropagation(); activatePower(); });
 }
 
 // ---------- orientation lock (mobile) ----------
