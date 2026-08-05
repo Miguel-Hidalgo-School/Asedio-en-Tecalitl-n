@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1A1423">
+<link rel="manifest" href="data:application/manifest+json,{%22name%22:%22Asedio%20Tecalitl%C3%A1n%22,%22short_name%22:%22Tecalitl%C3%A1n%22,%22display%22:%22fullscreen%22,%22orientation%22:%22landscape%22,%22start_url%22:%22.%22,%22background_color%22:%22%231A1423%22,%22theme_color%22:%22%231A1423%22}">
 <title>Asedio Tecalitlán</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rubik:wght@400;600;800&display=swap');
@@ -84,7 +89,7 @@
 
   <div class="hud" id="hud" style="display:none;">
     <div class="hud-block">
-      <div class="mapLabel">Mapa 1 · Centro de Tecalitlán</div>
+      <div class="mapLabel" id="mapLabelHud">Mapa 1 · Centro de Tecalitlán</div>
       <div class="hud-title" id="waveLabel">OLEADA 1</div>
       <div class="hud-row"><span class="label">BASE</span><div class="bar"><div class="bar-fill base" id="baseBar" style="width:100%"></div></div></div>
       <div class="hud-row"><span class="label">VIDA</span><div class="bar"><div class="bar-fill" id="hpBar" style="width:100%"></div></div></div>
@@ -103,7 +108,10 @@
     <h1>ASEDIO TECALITLÁN</h1>
     <h2>Elige a tu guerrero y defiende la plaza</h2>
     <div class="chars" id="charSelect"></div>
-    <button class="playBtn" id="playBtn">JUGAR</button>
+    <div style="display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap;">
+      <button class="playBtn" id="playBtn">JUGAR</button>
+      <button id="fsBtnStart" style="font-family:'Bebas Neue'; font-size:16px; letter-spacing:1px; background:rgba(46,196,182,0.25); color:var(--paper); border:2px solid var(--turquoise); padding:12px 18px; border-radius:40px; cursor:pointer;">⛶ PANTALLA COMPLETA</button>
+    </div>
     <div id="fsHint" style="color:rgba(247,241,230,0.55); font-size:11px; margin-top:14px; max-width:280px; line-height:1.4;"></div>
     <div class="credit">CHAVARRÍA PRODUCTION</div>
   </div>
@@ -111,7 +119,10 @@
   <div id="endScreen">
     <h1 id="endTitle">BASE DESTRUIDA</h1>
     <div id="endStats"></div>
-    <button class="playBtn" id="retryBtn">REINTENTAR</button>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+      <button class="playBtn" id="retryBtn">REINTENTAR</button>
+      <button id="backToSelectBtn" style="font-family:'Bebas Neue'; font-size:18px; letter-spacing:1px; background:transparent; color:var(--paper); border:2px solid var(--paper); padding:12px 26px; border-radius:40px; cursor:pointer; opacity:0.85;">ELEGIR OTRO GUERRERO</button>
+    </div>
     <div class="credit">CHAVARRÍA PRODUCTION</div>
   </div>
 
@@ -162,7 +173,7 @@ const CHARACTERS = [
   {id:'trunks', name:'Trunks Futuro', color:'#6A0572', power:'Corte de energía potenciado', powerColor:'#B98CFF', hair:'#8a6b3d', hairStyle:'long', skin:'#e8b48a', accessory:'sword'},
   {id:'android18', name:'Androide 18', color:'#FFD400', power:'Ráfagas de alta cadencia', powerColor:'#FFF3A0', hair:'#e8d840', hairStyle:'bob', skin:'#f0c8a0', accessory:'none'},
   {id:'luffy', name:'Luffy', color:'#E4322B', power:'Onda de choque en cono', powerColor:'#FF9C8C', hair:'#2a2018', hairStyle:'short', skin:'#e8b48a', accessory:'strawhat'},
-  {id:'zoro', name:'Zoro', color:'#2EC4B6', power:'Tajo en abanico', powerColor:'#B6FFF3', hair:'#3a7a5a', hairStyle:'short', skin:'#e8b48a', accessory:'sword'},
+  {id:'zoro', name:'Zoro', color:'#2EC4B6', power:'Tajo en abanico', powerColor:'#B6FFF3', hair:'#3a7a5a', hairStyle:'short', skin:'#e8b48a', accessory:'sword', headband:'#1a3a2a'},
 ];
 let selectedChar = CHARACTERS[0];
 
@@ -178,6 +189,20 @@ CHARACTERS.forEach((c,i)=>{
   });
   charSelectEl.appendChild(card);
 });
+
+// ---------- mapas ----------
+const MAPS = [
+  {name:'Centro de Tecalitlán', ground:'#8a4a2f', accent:'#FFB627', bossName:'El Mariachi Caído', ability:'summon'},
+  {name:'San Isidro', ground:'#5a5a3a', accent:'#8CE6FF', bossName:'Enjambre', ability:'swarm'},
+  {name:'Real de Minas', ground:'#4a5a5a', accent:'#B98CFF', bossName:'Muro Viviente', ability:'shield'},
+  {name:'Eduardo Romero', ground:'#7a5a3a', accent:'#FF9C8C', bossName:'Excavador', ability:'charge'},
+  {name:'Acueducto', ground:'#2f5a6a', accent:'#7fe9df', bossName:'Corriente', ability:'slow'},
+  {name:'Secundaria 32', ground:'#5a4a6a', accent:'#FFD86B', bossName:'Director Zombie', ability:'stun'},
+  {name:'La Purísima', ground:'#4a2f4a', accent:'#e0a8ff', bossName:'Penitente', ability:'curse'},
+  {name:'Santiago', ground:'#3a2a2a', accent:'#FF6B35', bossName:'El Patrón', ability:'combo'},
+];
+let mapIndex = 0;
+function currentMap(){ return MAPS[mapIndex]; }
 
 // ---------- game state ----------
 let state = 'menu'; // menu | playing | over
@@ -203,6 +228,7 @@ const player = {x:0,y:0,radius:16,speed:230,angle:0};
 
 function resetGame(){
   wave = 1; kills = 0; baseHP = baseMaxHP; playerHP = playerMaxHP;
+  mapIndex = 0;
   zombies = []; bullets = []; particles = []; pickups = [];
   ammo = maxAmmo; hasRifle = false;
   powerActive = false; powerTimeLeft = 0;
@@ -284,8 +310,15 @@ async function tryLockLandscape(){
   try{
     if(screen.orientation && screen.orientation.lock){ await screen.orientation.lock('landscape'); }
   }catch(err){ /* algunos navegadores solo permiten esto en pantalla completa o PWA instalada */ }
+  // Truco clásico: si el Fullscreen API no funcionó, forzar scroll oculta
+  // la barra de direcciones en muchos navegadores móviles aunque no sea 100% real.
+  if(!fsOk){
+    document.body.style.height = '120vh';
+    window.scrollTo(0, 1);
+    setTimeout(()=>{ window.scrollTo(0,1); document.body.style.height=''; resize(); }, 300);
+  }
   if(!fsOk && hint){
-    hint.textContent = 'Si la barra del navegador no desaparece, abre este archivo directamente en Chrome (no en una vista previa) y vuelve a tocar JUGAR.';
+    hint.textContent = 'Si la barra sigue visible, es una restricción de tu navegador. Prueba con el menú ⋮ de Chrome → "Agregar a pantalla de inicio" y ábrelo desde ahí — así sí abre sin ninguna barra.';
   }
 }
 window.addEventListener('resize', updateOrientationOverlay);
@@ -346,13 +379,16 @@ function spawnMariachiZombie(){
 let bossIntroLock = false;
 function spawnBoss(){
   bossActive = true;
+  const m = currentMap();
   boss = {
     x: canvas.width/2, y: -80, radius:34, speed:38,
-    hp: 900 + wave*40, maxHp: 900+wave*40,
-    phase:'approach', summonTimer:3, bellTimer:6, targetY: canvas.height*0.28
+    hp: 900 + wave*40 + mapIndex*120, maxHp: 900+wave*40+mapIndex*120,
+    phase:'approach', summonTimer:3, bellTimer:6, chargeTimer:4, slowTimer:4.5, curseTimer:3,
+    ability: m.ability, shielded:false, shieldTimer:5, comboStep:0, comboTimer:4,
+    targetY: canvas.height*0.28
   };
   bossIntroLock = true;
-  showBanner('¡EL MARIACHI CAÍDO!', 'JEFE DEL CENTRO DE TECALITLÁN');
+  showBanner('¡' + m.bossName.toUpperCase() + '!', 'JEFE DE ' + m.name.toUpperCase());
   setTimeout(()=>{ bossIntroLock=false; }, 1800);
 }
 
@@ -463,8 +499,8 @@ function update(dt){
     }
     if(hitSomething && b.pierce<=0) continue;
     if(boss && dist(b.x,b.y,boss.x,boss.y) < boss.radius+4){
-      boss.hp -= b.dmg;
-      particles.push({x:b.x,y:b.y,life:0.2,type:'hit'});
+      boss.hp -= boss.shielded ? b.dmg*0.15 : b.dmg;
+      particles.push({x:b.x,y:b.y,life:0.2,type: boss.shielded ? 'shield' : 'hit'});
       bullets.splice(i,1);
     }
   }
@@ -514,15 +550,47 @@ function update(dt){
       if(boss.y>=boss.targetY){ boss.phase='fight'; }
     } else if(boss.phase==='fight'){
       boss.x += Math.sin(Date.now()/900)*40*dt;
-      boss.summonTimer -= dt; boss.bellTimer -= dt;
-      if(boss.summonTimer<=0){ spawnMariachiZombie(); spawnMariachiZombie(); boss.summonTimer = 4.5 - Math.min(2,wave*0.05); }
-      if(boss.bellTimer<=0){
-        // bell shockwave damages player if close
-        if(dist(boss.x,boss.y,player.x,player.y) < 220){
-          playerHP -= 18; if(playerHP<0) playerHP=0;
+      const a = boss.ability;
+
+      if(a==='summon' || a==='swarm' || a==='stun' || a==='combo'){
+        boss.summonTimer -= dt;
+        if(boss.summonTimer<=0){
+          if(a==='swarm'){ spawnZombie(); spawnZombie(); spawnZombie(); boss.summonTimer = 2.2; }
+          else { spawnMariachiZombie(); if(a!=='stun') spawnMariachiZombie(); boss.summonTimer = 4.5 - Math.min(2,wave*0.05); }
         }
-        particles.push({x:boss.x,y:boss.y,life:0.5,type:'shock'});
-        boss.bellTimer = 5.5;
+      }
+      if(a==='summon' || a==='stun' || a==='combo'){
+        boss.bellTimer -= dt;
+        if(boss.bellTimer<=0){
+          if(dist(boss.x,boss.y,player.x,player.y) < 220){ playerHP -= 18; if(playerHP<0) playerHP=0; }
+          particles.push({x:boss.x,y:boss.y,life:0.5,type:'shock'});
+          boss.bellTimer = 5.5;
+        }
+      }
+      if(a==='shield' || a==='combo'){
+        boss.shieldTimer -= dt;
+        if(boss.shieldTimer<=0){ boss.shielded = !boss.shielded; boss.shieldTimer = boss.shielded ? 3.5 : 5; }
+      }
+      if(a==='charge' || a==='combo'){
+        boss.chargeTimer -= dt;
+        if(boss.chargeTimer<=0){
+          const ang = Math.atan2(player.y-boss.y, player.x-boss.x);
+          boss.x += Math.cos(ang)*140*dt*6; boss.y += Math.cos(ang)*0; // impulse handled visually via shock particle
+          particles.push({x:boss.x,y:boss.y,life:0.35,type:'shock'});
+          if(dist(boss.x,boss.y,player.x,player.y) < 90){ playerHP -= 22; if(playerHP<0) playerHP=0; }
+          boss.chargeTimer = 4.5;
+        }
+      }
+      if(a==='slow' || a==='combo'){
+        boss.slowTimer -= dt;
+        if(boss.slowTimer<=0){
+          if(dist(boss.x,boss.y,player.x,player.y) < 200){ player.speed = 130; setTimeout(()=>{ player.speed=230; }, 1500); }
+          particles.push({x:boss.x,y:boss.y,life:0.5,type:'shock'});
+          boss.slowTimer = 4.5;
+        }
+      }
+      if(a==='curse' || a==='combo'){
+        if(dist(boss.x,boss.y,player.x,player.y) < 140){ playerHP -= 10*dt; if(playerHP<0) playerHP=0; }
       }
       if(dist(boss.x,boss.y,player.x,player.y) < boss.radius+player.radius+6){
         playerHP -= 10*dt; if(playerHP<0) playerHP=0;
@@ -532,8 +600,18 @@ function update(dt){
       kills+=5;
       particles.push({x:boss.x,y:boss.y,life:0.6,type:'death',color:'#FFB627'});
       boss=null; bossActive=false;
-      showBanner('¡MAPA 1 SUPERADO!', 'El Mariachi Caído ha sido derrotado');
-      setTimeout(()=>{ endGame(true); }, 2200);
+      const m = currentMap();
+      if(mapIndex >= MAPS.length-1){
+        showBanner('¡ASEDIO SUPERADO!', 'Tecalitlán está a salvo');
+        setTimeout(()=>{ endGame(true, true); }, 2200);
+      } else {
+        showBanner('¡' + m.name.toUpperCase() + ' SUPERADO!', 'Avanzando al siguiente mapa');
+        setTimeout(()=>{
+          mapIndex++; wave = 1; zombies=[]; bullets=[];
+          document.getElementById('mapLabelHud').textContent = 'Mapa ' + (mapIndex+1) + ' · ' + currentMap().name;
+          if(state==='playing') startWave();
+        }, 2200);
+      }
     }
   }
 
@@ -564,8 +642,9 @@ function update(dt){
 // ---------- render ----------
 function drawPlaza(){
   const W=canvas.width,H=canvas.height;
+  const m = currentMap();
   // ground
-  ctx.fillStyle = '#8a4a2f';
+  ctx.fillStyle = m.ground;
   ctx.fillRect(0,0,W,H);
   ctx.fillStyle = 'rgba(0,0,0,0.12)';
   for(let i=0;i<40;i++){
@@ -584,15 +663,15 @@ function drawPlaza(){
   ctx.fillRect(W*0.04,H*0.06,W*0.18,H*0.14);
   // base kiosko
   ctx.beginPath(); ctx.arc(baseX,baseY,baseRadius,0,Math.PI*2);
-  ctx.fillStyle='rgba(255,182,39,0.22)'; ctx.fill();
-  ctx.strokeStyle='var(--gold)'; ctx.lineWidth=3; ctx.strokeStyle='#FFB627'; ctx.stroke();
-  ctx.fillStyle='#FFD86B'; ctx.font='bold 13px Rubik'; ctx.textAlign='center';
+  ctx.fillStyle=m.accent+'38'; ctx.fill();
+  ctx.strokeStyle=m.accent; ctx.lineWidth=3; ctx.stroke();
+  ctx.fillStyle=m.accent; ctx.font='bold 13px Rubik'; ctx.textAlign='center';
   ctx.fillText('KIOSKO', baseX, baseY+5);
 }
 
 function drawHumanoid(x, y, angle, opts){
   // opts: {skin, outfit, headR, bodyW, bodyH, limp, arms, gunLen, glow, tattered, hairStyle, hairColor, accessory}
-  const o = Object.assign({skin:'#e0a878', outfit:'#3d5a3d', headR:7, bodyW:14, bodyH:20, limp:0, arms:true, gunLen:16, glow:null, tattered:false, hairStyle:null, hairColor:'#1a1a1a', accessory:'none'}, opts);
+  const o = Object.assign({skin:'#e0a878', outfit:'#3d5a3d', headR:7, bodyW:14, bodyH:20, limp:0, arms:true, gunLen:16, glow:null, tattered:false, hairStyle:null, hairColor:'#1a1a1a', accessory:'none', headband:null}, opts);
   const walkPhase = (o.limp ? Math.sin(Date.now()/260 + x*0.02) : Math.sin(Date.now()/140 + x*0.02)) * (o.limp?8:14);
   ctx.save();
   ctx.translate(x,y);
@@ -637,6 +716,10 @@ function drawHumanoid(x, y, angle, opts){
   ctx.fillStyle = o.skin; ctx.fill();
   ctx.strokeStyle='rgba(0,0,0,0.35)'; ctx.lineWidth=1.4; ctx.stroke();
   if(o.hairStyle){ drawHair(o.headR, o.hairStyle, o.hairColor); }
+  if(o.headband){
+    ctx.strokeStyle = o.headband; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(0,0,o.headR*0.75,-0.4,Math.PI+0.4); ctx.stroke();
+  }
   ctx.restore();
   if(o.accessory==='strawhat'){ drawAccessory('strawhat', o.headR, o.bodyW, o.bodyH); }
 
@@ -718,7 +801,7 @@ function drawPlayer(){
     gunLen: hasRifle ? 20 : 12,
     glow: powerActive ? c.powerColor : null,
     hairStyle: c.hairStyle, hairColor: powerActive ? '#ffe27a' : c.hair,
-    accessory: c.accessory
+    accessory: c.accessory, headband: c.headband
   });
   if(powerActive){
     ctx.beginPath(); ctx.arc(player.x,player.y-8,player.radius+10,0,Math.PI*2);
@@ -799,6 +882,7 @@ function drawZombies(){
 
 function drawBoss(){
   if(!boss) return;
+  const m = currentMap();
   const bobY = Math.sin(Date.now()/300)*3;
   ctx.save();
   ctx.translate(boss.x, boss.y+bobY);
@@ -806,10 +890,10 @@ function drawBoss(){
   ctx.strokeStyle='#241f2e'; ctx.lineWidth=9; ctx.lineCap='round';
   ctx.beginPath(); ctx.moveTo(-9,18); ctx.lineTo(-11,40); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(9,18); ctx.lineTo(11,40); ctx.stroke();
-  // torso — traje de charro ajado
+  // torso
   ctx.fillStyle='#241f2e';
   roundRect(-18,-22,36,42,6); ctx.fill();
-  ctx.strokeStyle='#FFB627'; ctx.lineWidth=2;
+  ctx.strokeStyle=m.accent; ctx.lineWidth=2;
   for(let i=-1;i<=1;i++){ ctx.beginPath(); ctx.moveTo(i*10,-20); ctx.lineTo(i*10,18); ctx.stroke(); }
   // arms
   ctx.strokeStyle='#6b7a5e'; ctx.lineWidth=8; ctx.lineCap='round';
@@ -818,19 +902,27 @@ function drawBoss(){
   // head
   ctx.beginPath(); ctx.arc(0,-30,13,0,Math.PI*2); ctx.fillStyle='#6b7a5e'; ctx.fill();
   ctx.strokeStyle='rgba(0,0,0,0.4)'; ctx.lineWidth=1.6; ctx.stroke();
-  // sombrero grande
-  ctx.beginPath(); ctx.ellipse(0,-40,32,10,0,0,Math.PI*2);
-  ctx.fillStyle='#241f18'; ctx.fill();
-  ctx.strokeStyle='#FFB627'; ctx.lineWidth=2; ctx.stroke();
-  ctx.beginPath(); ctx.arc(0,-48,9,0,Math.PI*2); ctx.fillStyle='#2e2820'; ctx.fill();
+  // sombrero solo para jefes con temática de mariachi (invocación)
+  if(boss.ability==='summon' || boss.ability==='combo'){
+    ctx.beginPath(); ctx.ellipse(0,-40,32,10,0,0,Math.PI*2);
+    ctx.fillStyle='#241f18'; ctx.fill();
+    ctx.strokeStyle=m.accent; ctx.lineWidth=2; ctx.stroke();
+    ctx.beginPath(); ctx.arc(0,-48,9,0,Math.PI*2); ctx.fillStyle='#2e2820'; ctx.fill();
+  } else {
+    // banda/adorno distintivo con el color del mapa
+    ctx.beginPath(); ctx.ellipse(0,-38,15,4,0,0,Math.PI*2); ctx.fillStyle=m.accent; ctx.globalAlpha=0.8; ctx.fill(); ctx.globalAlpha=1;
+  }
+  if(boss.shielded){
+    ctx.beginPath(); ctx.arc(0,-10,44,0,Math.PI*2); ctx.strokeStyle=m.accent; ctx.lineWidth=3; ctx.globalAlpha=0.6; ctx.stroke(); ctx.globalAlpha=1;
+  }
   ctx.restore();
 
   // hp bar top
   const bw=Math.min(500,canvas.width*0.6);
   ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(canvas.width/2-bw/2, 14, bw, 10);
-  ctx.fillStyle='#FFB627'; ctx.fillRect(canvas.width/2-bw/2,14,bw*(boss.hp/boss.maxHp),10);
+  ctx.fillStyle=m.accent; ctx.fillRect(canvas.width/2-bw/2,14,bw*(boss.hp/boss.maxHp),10);
   ctx.fillStyle='#fff'; ctx.font='11px Rubik'; ctx.textAlign='center';
-  ctx.fillText('EL MARIACHI CAÍDO', canvas.width/2, 12);
+  ctx.fillText(currentMap().bossName.toUpperCase(), canvas.width/2, 12);
 }
 
 function drawBullets(){
@@ -859,6 +951,7 @@ function drawParticles(){
     if(p.type==='hit'){ ctx.beginPath(); ctx.arc(p.x,p.y,4,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill(); }
     else if(p.type==='death'){ ctx.beginPath(); ctx.arc(p.x,p.y,10*(1-p.life),0,Math.PI*2); ctx.strokeStyle=p.color||'#fff'; ctx.lineWidth=3; ctx.stroke(); }
     else if(p.type==='shock'){ ctx.beginPath(); ctx.arc(p.x,p.y,220*(1-p.life),0,Math.PI*2); ctx.strokeStyle='#FFB627'; ctx.lineWidth=4; ctx.stroke(); }
+    else if(p.type==='shield'){ ctx.beginPath(); ctx.arc(p.x,p.y,6,0,Math.PI*2); ctx.strokeStyle='#B98CFF'; ctx.lineWidth=2; ctx.stroke(); }
     ctx.globalAlpha=1;
   }
 }
@@ -891,21 +984,29 @@ function startGame(){
   document.getElementById('hud').style.display='flex';
   if(isTouch){ document.getElementById('fsBtn').style.display='flex'; }
   resetGame();
+  document.getElementById('mapLabelHud').textContent = 'Mapa 1 · ' + currentMap().name;
   state='playing';
   startWave();
 }
-function endGame(won){
+function endGame(won, isFinal){
   state='over';
   document.getElementById('hud').style.display='none';
   document.getElementById('powerTimer').style.display='none';
   document.getElementById('endScreen').style.display='flex';
-  document.getElementById('endTitle').textContent = won ? 'MAPA 1 SUPERADO' : 'BASE DESTRUIDA';
-  document.getElementById('endStats').textContent = `Oleada alcanzada: ${wave} · Kills: ${kills}`;
+  document.getElementById('endTitle').textContent = isFinal ? '¡TECALITLÁN A SALVO!' : (won ? 'MAPA SUPERADO' : 'BASE DESTRUIDA');
+  document.getElementById('endStats').textContent = `Mapa: ${currentMap().name} · Oleada: ${wave} · Kills: ${kills}`;
+}
+function backToSelect(){
+  document.getElementById('endScreen').style.display='none';
+  document.getElementById('startScreen').style.display='flex';
+  state='menu';
 }
 
 document.getElementById('playBtn').addEventListener('click', ()=>{ tryLockLandscape(); startGame(); });
 document.getElementById('retryBtn').addEventListener('click', startGame);
 document.getElementById('fsBtn').addEventListener('click', tryLockLandscape);
+document.getElementById('fsBtnStart').addEventListener('click', tryLockLandscape);
+document.getElementById('backToSelectBtn').addEventListener('click', backToSelect);
 
 })();
 </script>
