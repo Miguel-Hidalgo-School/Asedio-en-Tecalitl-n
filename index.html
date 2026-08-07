@@ -121,11 +121,13 @@
     <div class="mapLabel" id="startMapLabel">Mapa 1 de 8 · Prototipo</div>
     <h1>ASEDIO TECALITLÁN</h1>
     <h2>Elige a tu guerrero y defiende la plaza</h2>
-    <div id="charPreviewWrap" style="position:relative; width:150px; height:170px; margin:0 auto 14px; display:flex; align-items:center; justify-content:center;">
-      <div id="charPreviewGlow" style="position:absolute; width:110px; height:110px; border-radius:50%; filter:blur(20px); opacity:0.5; transition:background .25s ease;"></div>
-      <canvas id="charPreviewCanvas" width="150" height="170" style="position:relative;"></canvas>
+    <div style="display:flex; align-items:center; justify-content:center; gap:18px; flex-wrap:wrap;">
+      <div class="chars" id="charSelect"></div>
+      <div id="charPreviewWrap" style="position:relative; width:110px; height:130px; flex-shrink:0; display:flex; align-items:center; justify-content:center;">
+        <div id="charPreviewGlow" style="position:absolute; width:85px; height:85px; border-radius:50%; filter:blur(18px); opacity:0.5; transition:background .25s ease;"></div>
+        <canvas id="charPreviewCanvas" width="110" height="130" style="position:relative;"></canvas>
+      </div>
     </div>
-    <div class="chars" id="charSelect"></div>
     <button class="playBtn" id="playBtn">JUGAR</button>
     <div id="fsHint" style="color:rgba(247,241,230,0.55); font-size:11px; margin-top:14px; max-width:280px; line-height:1.4;"></div>
     <div class="credit">CHAVARRÍA PRODUCTION</div>
@@ -227,7 +229,7 @@ function renderCharPreview(c){
   const savedCtx = ctx;
   ctx = previewCtx;
   drawHumanoid(previewCanvas.width/2, previewCanvas.height*0.78, 0, {
-    skin: c.skin, outfit: c.color, headR: 17, bodyW: 34, bodyH: 52, gunLen: 0, arms:true,
+    skin: c.skin, outfit: c.color, headR: 13, bodyW: 26, bodyH: 40, gunLen: 0, arms:true,
     hairStyle: c.hairStyle, hairColor: c.hair, accessory: c.accessory, headband: c.headband
   });
   ctx = savedCtx;
