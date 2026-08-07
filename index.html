@@ -105,7 +105,7 @@
       <div class="mapLabel" id="mapLabelHud">Mapa 1 · Centro de Tecalitlán</div>
       <div class="hud-title" id="waveLabel">OLEADA 1</div>
       <div class="hud-row"><span class="label">BASE</span><div class="bar"><div class="bar-fill base" id="baseBar" style="width:100%"></div></div></div>
-      <div class="hud-row"><span class="label">VIDA</span><div class="bar"><div class="bar-fill" id="hpBar" style="width:100%"></div></div></div>
+      <div class="hud-row"><span class="label" id="charNameHud">GOKU</span><div class="bar"><div class="bar-fill" id="hpBar" style="width:100%"></div></div></div>
     </div>
     <div class="hud-block" style="text-align:right;">
       <div class="label" style="color:var(--gold)">KILLS</div>
@@ -1168,6 +1168,7 @@ function startGame(){
   if(isTouch){ document.getElementById('fsBtn').style.display='flex'; }
   resetGame();
   document.getElementById('mapLabelHud').textContent = 'Mapa 1 · ' + currentMap().name;
+  document.getElementById('charNameHud').textContent = selectedChar.name.toUpperCase();
   state='playing';
   showMapIntro(startWave);
 }
