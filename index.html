@@ -114,10 +114,7 @@
     <h1>ASEDIO TECALITLÁN</h1>
     <h2>Elige a tu guerrero y defiende la plaza</h2>
     <div class="chars" id="charSelect"></div>
-    <div style="display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap;">
-      <button class="playBtn" id="playBtn">JUGAR</button>
-      <button id="fsBtnStart" style="font-family:'Bebas Neue'; font-size:16px; letter-spacing:1px; background:rgba(46,196,182,0.25); color:var(--paper); border:2px solid var(--turquoise); padding:12px 18px; border-radius:40px; cursor:pointer;">⛶ PANTALLA COMPLETA</button>
-    </div>
+    <button class="playBtn" id="playBtn">JUGAR</button>
     <div id="fsHint" style="color:rgba(247,241,230,0.55); font-size:11px; margin-top:14px; max-width:280px; line-height:1.4;"></div>
     <div class="credit">CHAVARRÍA PRODUCTION</div>
   </div>
@@ -194,11 +191,19 @@ CHARACTERS.forEach((c,i)=>{
   card.innerHTML = `<div class="charDot" style="background:${c.color}"></div><div class="charName">${c.name}</div><div class="charPower">${c.power}</div>`;
   card.addEventListener('click', ()=>{
     selectedChar = c;
-    [...charSelectEl.children].forEach(el=>el.classList.remove('selected'));
+    [...charSelectEl.children].forEach(el=>{ if(el.classList.contains('charCard')) el.classList.remove('selected'); });
     card.classList.add('selected');
   });
   charSelectEl.appendChild(card);
 });
+// Botón de pantalla completa como una tarjeta más de la cuadrícula (junto a Zoro),
+// así siempre queda visible y fácil de tocar en Android.
+const fsCard = document.createElement('button');
+fsCard.id = 'fsBtnStart';
+fsCard.className = 'charCard';
+fsCard.style.cssText = 'background:rgba(46,196,182,0.2); border-color:var(--turquoise); color:var(--paper); cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; -webkit-appearance:none; appearance:none; font-family:inherit;';
+fsCard.innerHTML = `<div style="font-size:28px; margin-bottom:6px;">⛶</div><div class="charName" style="font-size:13px;">PANTALLA<br>COMPLETA</div>`;
+charSelectEl.appendChild(fsCard);
 
 // ---------- mapas ----------
 const MAPS = [
