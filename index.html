@@ -86,6 +86,14 @@
   @media (max-width:900px){
     body.is-touch #rotateOverlay.active{ display:flex; }
   }
+
+  #mapIntro{position:fixed; inset:0; z-index:50; display:none; flex-direction:column; align-items:center; justify-content:flex-end; background:#241326 center/cover no-repeat; padding:0 20px 40px;}
+  #mapIntro.active{display:flex;}
+  #mapIntro::before{content:''; position:absolute; inset:0; background:linear-gradient(180deg, rgba(26,20,35,0.3) 0%, rgba(26,20,35,0.9) 85%);}
+  #mapIntro .mapIntroInner{position:relative; text-align:center;}
+  #mapIntro .mapIntroLabel{font-family:'Rubik'; color:var(--turquoise); font-size:12px; letter-spacing:3px; text-transform:uppercase;}
+  #mapIntro h1{font-family:'Bebas Neue'; color:var(--gold); font-size:min(11vw,52px); margin:4px 0; letter-spacing:1px;}
+  #mapIntro .mapIntroBoss{color:var(--paper); font-size:13px; opacity:0.85;}
 </style>
 </head>
 <body>
@@ -113,6 +121,10 @@
     <div class="mapLabel" id="startMapLabel">Mapa 1 de 8 · Prototipo</div>
     <h1>ASEDIO TECALITLÁN</h1>
     <h2>Elige a tu guerrero y defiende la plaza</h2>
+    <div id="charPreviewWrap" style="position:relative; width:150px; height:170px; margin:0 auto 14px; display:flex; align-items:center; justify-content:center;">
+      <div id="charPreviewGlow" style="position:absolute; width:110px; height:110px; border-radius:50%; filter:blur(20px); opacity:0.5; transition:background .25s ease;"></div>
+      <canvas id="charPreviewCanvas" width="150" height="170" style="position:relative;"></canvas>
+    </div>
     <div class="chars" id="charSelect"></div>
     <button class="playBtn" id="playBtn">JUGAR</button>
     <div id="fsHint" style="color:rgba(247,241,230,0.55); font-size:11px; margin-top:14px; max-width:280px; line-height:1.4;"></div>
@@ -148,6 +160,14 @@
     <h2>GIRA TU TELÉFONO</h2>
     <p>Asedio Tecalitlán se juega en horizontal, para que sostengas el celular cómodo con ambas manos en los joysticks.</p>
   </div>
+
+  <div id="mapIntro">
+    <div class="mapIntroInner">
+      <div class="mapIntroLabel" id="mapIntroLabel">Mapa 1 de 8</div>
+      <h1 id="mapIntroName">Centro de Tecalitlán</h1>
+      <div class="mapIntroBoss" id="mapIntroBoss">Jefe: El Mariachi Caído</div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -156,7 +176,7 @@
 
 // ---------- setup ----------
 const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
+let ctx = canvas.getContext('2d');
 function resize(){
   const vv = window.visualViewport;
   const w = vv ? vv.width : window.innerWidth;
@@ -193,9 +213,26 @@ CHARACTERS.forEach((c,i)=>{
     selectedChar = c;
     [...charSelectEl.children].forEach(el=>{ if(el.classList.contains('charCard')) el.classList.remove('selected'); });
     card.classList.add('selected');
+    renderCharPreview(c);
   });
   charSelectEl.appendChild(card);
 });
+
+// Vista previa grande del personaje elegido, para decidir antes de tocar JUGAR
+const previewCanvas = document.getElementById('charPreviewCanvas');
+const previewCtx = previewCanvas.getContext('2d');
+function renderCharPreview(c){
+  document.getElementById('charPreviewGlow').style.background = c.color;
+  previewCtx.clearRect(0,0,previewCanvas.width,previewCanvas.height);
+  const savedCtx = ctx;
+  ctx = previewCtx;
+  drawHumanoid(previewCanvas.width/2, previewCanvas.height*0.78, 0, {
+    skin: c.skin, outfit: c.color, headR: 17, bodyW: 34, bodyH: 52, gunLen: 0, arms:true,
+    hairStyle: c.hairStyle, hairColor: c.hair, accessory: c.accessory, headband: c.headband
+  });
+  ctx = savedCtx;
+}
+renderCharPreview(selectedChar);
 // Botón de pantalla completa como una tarjeta más de la cuadrícula (junto a Zoro),
 // así siempre queda visible y fácil de tocar en Android.
 const fsCard = document.createElement('button');
@@ -449,6 +486,19 @@ function startWave(){
   }
 }
 
+function showMapIntro(afterCb){
+  const m = currentMap();
+  const el = document.getElementById('mapIntro');
+  document.getElementById('mapIntroLabel').textContent = 'Mapa ' + (mapIndex+1) + ' de 8';
+  document.getElementById('mapIntroName').textContent = m.name;
+  document.getElementById('mapIntroBoss').textContent = 'Jefe: ' + m.bossName;
+  const img = new Image();
+  img.onload = ()=>{ el.style.backgroundImage = `url('${m.photo}')`; };
+  img.onerror = ()=>{ el.style.backgroundImage = 'none'; };
+  img.src = m.photo;
+  el.classList.add('active');
+  setTimeout(()=>{ el.classList.remove('active'); afterCb(); }, 2200);
+}
 function showBanner(main, sub){
   const el = document.getElementById('waveBanner');
   el.innerHTML = main + (sub ? `<span>${sub}</span>` : '');
@@ -596,12 +646,13 @@ function update(dt){
       boss.x += Math.sin(Date.now()/900)*40*dt;
       const a = boss.ability;
 
-      if(a==='summon' || a==='swarm' || a==='stun' || a==='combo'){
-        boss.summonTimer -= dt;
-        if(boss.summonTimer<=0){
-          if(a==='swarm'){ spawnZombie(); spawnZombie(); spawnZombie(); boss.summonTimer = 2.2; }
-          else { spawnMariachiZombie(); if(a!=='stun') spawnMariachiZombie(); boss.summonTimer = 4.5 - Math.min(2,wave*0.05); }
-        }
+      // Todos los jefes tienen algo de refuerzo, no solo los de habilidad "invocación"
+      boss.summonTimer -= dt;
+      if(boss.summonTimer<=0){
+        if(a==='swarm'){ spawnZombie(); spawnZombie(); spawnZombie(); boss.summonTimer = 2.2; }
+        else if(a==='summon' || a==='combo'){ spawnMariachiZombie(); spawnMariachiZombie(); boss.summonTimer = 4.5 - Math.min(2,wave*0.05); }
+        else if(a==='stun'){ spawnMariachiZombie(); boss.summonTimer = 4.5 - Math.min(2,wave*0.05); }
+        else { spawnZombie(); boss.summonTimer = 5.5 - Math.min(2,wave*0.05); }
       }
       if(a==='summon' || a==='stun' || a==='combo'){
         boss.bellTimer -= dt;
@@ -653,7 +704,7 @@ function update(dt){
         setTimeout(()=>{
           mapIndex++; wave = 1; zombies=[]; bullets=[];
           document.getElementById('mapLabelHud').textContent = 'Mapa ' + (mapIndex+1) + ' · ' + currentMap().name;
-          if(state==='playing') startWave();
+          if(state==='playing') showMapIntro(startWave);
         }, 2200);
       }
     }
@@ -1111,7 +1162,7 @@ function startGame(){
   resetGame();
   document.getElementById('mapLabelHud').textContent = 'Mapa 1 · ' + currentMap().name;
   state='playing';
-  startWave();
+  showMapIntro(startWave);
 }
 function endGame(won, isFinal){
   state='over';
