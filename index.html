@@ -41,6 +41,10 @@
   #waveBanner span{display:block; font-size:0.28em; color:var(--gold); letter-spacing:3px;}
 
   #startScreen,#endScreen{position:absolute; inset:0; background:radial-gradient(ellipse at center, #7a2f4a 0%, #241326 80%); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:20; text-align:center; padding:20px;}
+  #startScreen{overflow:hidden;}
+  #startBgPhoto{position:absolute; inset:0; background-size:cover; background-position:center; opacity:0; transition:opacity .6s ease; z-index:-1;}
+  #startBgPhoto.loaded{opacity:0.4;}
+  #startBgPhoto::after{content:''; position:absolute; inset:0; background:radial-gradient(ellipse at center, rgba(122,47,74,0.55) 0%, rgba(36,19,38,0.85) 80%);}
   #startScreen h1{font-family:'Bebas Neue'; font-size:min(14vw,72px); color:var(--gold); margin:0; letter-spacing:2px; text-shadow:0 4px 0 rgba(0,0,0,0.4);}
   #startScreen h2{font-family:'Rubik'; font-weight:400; color:var(--paper); opacity:0.85; margin:6px 0 28px; font-size:15px;}
   .chars{display:flex; gap:14px; flex-wrap:wrap; justify-content:center; max-width:520px; margin-bottom:26px;}
@@ -105,7 +109,8 @@
   <div id="waveBanner"></div>
 
   <div id="startScreen">
-    <div class="mapLabel">Mapa 1 de 8 · Prototipo</div>
+    <div id="startBgPhoto"></div>
+    <div class="mapLabel" id="startMapLabel">Mapa 1 de 8 · Prototipo</div>
     <h1>ASEDIO TECALITLÁN</h1>
     <h2>Elige a tu guerrero y defiende la plaza</h2>
     <div class="chars" id="charSelect"></div>
@@ -197,17 +202,28 @@ CHARACTERS.forEach((c,i)=>{
 
 // ---------- mapas ----------
 const MAPS = [
-  {name:'Centro de Tecalitlán', ground:'#8a4a2f', accent:'#FFB627', bossName:'El Mariachi Caído', ability:'summon', structure:'kiosco', label:'KIOSKO'},
-  {name:'San Isidro', ground:'#5a5a3a', accent:'#8CE6FF', bossName:'Enjambre', ability:'swarm', structure:'barricada', label:'BARRICADA'},
-  {name:'Real de Minas', ground:'#4a5a5a', accent:'#B98CFF', bossName:'Muro Viviente', ability:'shield', structure:'muro', label:'MURO'},
-  {name:'Eduardo Romero', ground:'#7a5a3a', accent:'#FF9C8C', bossName:'Excavador', ability:'charge', structure:'obra', label:'OBRA'},
-  {name:'Acueducto', ground:'#2f5a6a', accent:'#7fe9df', bossName:'Corriente', ability:'slow', structure:'acueducto', label:'ACUEDUCTO'},
-  {name:'Secundaria 32', ground:'#5a4a6a', accent:'#FFD86B', bossName:'Director Zombie', ability:'stun', structure:'escuela', label:'ESCUELA'},
-  {name:'La Purísima', ground:'#4a2f4a', accent:'#e0a8ff', bossName:'Penitente', ability:'curse', structure:'capilla', label:'CAPILLA'},
-  {name:'Santiago', ground:'#3a2a2a', accent:'#FF6B35', bossName:'El Patrón', ability:'combo', structure:'cancha', label:'CANCHA TECHADA'},
+  {name:'Centro de Tecalitlán', ground:'#8a4a2f', accent:'#FFB627', bossName:'El Mariachi Caído', ability:'summon', structure:'kiosco', label:'KIOSKO', photo:'mapa1-centro.jpg'},
+  {name:'San Isidro', ground:'#5a5a3a', accent:'#8CE6FF', bossName:'Enjambre', ability:'swarm', structure:'barricada', label:'BARRICADA', photo:'mapa2-sanisidro.jpg'},
+  {name:'Real de Minas', ground:'#4a5a5a', accent:'#B98CFF', bossName:'Muro Viviente', ability:'shield', structure:'muro', label:'MURO', photo:'mapa3-realdeminas.jpg'},
+  {name:'Eduardo Romero', ground:'#7a5a3a', accent:'#FF9C8C', bossName:'Excavador', ability:'charge', structure:'obra', label:'OBRA', photo:'mapa4-eduardoromero.jpg'},
+  {name:'Acueducto', ground:'#2f5a6a', accent:'#7fe9df', bossName:'Corriente', ability:'slow', structure:'acueducto', label:'ACUEDUCTO', photo:'mapa5-acueducto.jpg'},
+  {name:'Secundaria 32', ground:'#5a4a6a', accent:'#FFD86B', bossName:'Director Zombie', ability:'stun', structure:'escuela', label:'ESCUELA', photo:'mapa6-secundaria32.jpg'},
+  {name:'La Purísima', ground:'#4a2f4a', accent:'#e0a8ff', bossName:'Penitente', ability:'curse', structure:'capilla', label:'CAPILLA', photo:'mapa7-lapurisima.jpg'},
+  {name:'Santiago', ground:'#3a2a2a', accent:'#FF6B35', bossName:'El Patrón', ability:'combo', structure:'cancha', label:'CANCHA TECHADA', photo:'mapa8-santiago.jpg'},
 ];
 let mapIndex = 0;
 function currentMap(){ return MAPS[mapIndex]; }
+function loadStartBgPhoto(){
+  const bgEl = document.getElementById('startBgPhoto');
+  bgEl.classList.remove('loaded');
+  const m = currentMap();
+  document.getElementById('startMapLabel').textContent = 'Mapa ' + (mapIndex+1) + ' de 8 · ' + m.name;
+  const path = m.photo;
+  const img = new Image();
+  img.onload = ()=>{ bgEl.style.backgroundImage = `url('${path}')`; bgEl.classList.add('loaded'); };
+  img.onerror = ()=>{ bgEl.style.backgroundImage = 'none'; }; // no pasa nada si no subiste la foto todavía
+  img.src = path;
+}
 
 // ---------- game state ----------
 let state = 'menu'; // menu | playing | over
@@ -1104,7 +1120,9 @@ function backToSelect(){
   document.getElementById('endScreen').style.display='none';
   document.getElementById('startScreen').style.display='flex';
   state='menu';
+  loadStartBgPhoto();
 }
+loadStartBgPhoto();
 
 document.getElementById('playBtn').addEventListener('click', ()=>{ tryLockLandscape(); startGame(); });
 document.getElementById('retryBtn').addEventListener('click', startGame);
