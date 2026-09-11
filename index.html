@@ -829,42 +829,81 @@ function drawHumanoid(x, y, angle, opts){
 
   if(o.glow){ ctx.shadowColor=o.glow; ctx.shadowBlur=14; }
 
-  // legs (simple swinging lines)
-  ctx.strokeStyle = o.outfit; ctx.lineWidth = 5; ctx.lineCap='round';
+  // legs (simple swinging lines) — un poco más oscuras que el torso, como si
+  // quedaran parcialmente en sombra, ayuda a separar visualmente los planos.
+  ctx.strokeStyle = shadeColor(o.outfit, -18); ctx.lineWidth = 5; ctx.lineCap='round';
   ctx.beginPath(); ctx.moveTo(-4, o.bodyH*0.35); ctx.lineTo(-4+walkPhase*0.3, o.bodyH*0.9); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(4, o.bodyH*0.35); ctx.lineTo(4-walkPhase*0.3, o.bodyH*0.9); ctx.stroke();
 
-  // rotate upper body toward facing angle
-  ctx.save();
-  ctx.rotate(angle);
+  // El cuerpo NO gira con el ángulo de puntería (eso era lo que lo hacía
+  // verse "torcido" al voltear). Solo se voltea en espejo según hacia dónde
+  // mira (izquierda/derecha) — el cuerpo se mantiene siempre de pie.
+  const facingLeft = Math.cos(angle) < 0;
+  const flip = facingLeft ? -1 : 1;
 
-  // torso
-  ctx.fillStyle = o.outfit;
+  // sombra de contacto en el piso — ayuda mucho a que se sienta "parado"
+  // sobre el suelo en vez de plano, sin necesidad de un motor 3D real.
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(0, o.bodyH*0.92, o.bodyW*0.65, o.bodyW*0.28, 0, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(0,0,0,0.32)';
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.scale(flip, 1);
+
+  // torso con degradado lateral (lado hacia la "luz" más claro, lado
+  // contrario más oscuro) — simula volumen sin necesidad de un modelo 3D.
+  const torsoGrad = ctx.createLinearGradient(-o.bodyW/2, 0, o.bodyW/2, 0);
+  torsoGrad.addColorStop(0, shadeColor(o.outfit, -22));
+  torsoGrad.addColorStop(0.55, o.outfit);
+  torsoGrad.addColorStop(1, shadeColor(o.outfit, 24));
+  ctx.fillStyle = torsoGrad;
   roundRect(-o.bodyW/2, -o.bodyH*0.55, o.bodyW, o.bodyH*0.9, 4);
   ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1;
+  roundRect(-o.bodyW/2, -o.bodyH*0.55, o.bodyW, o.bodyH*0.9, 4);
+  ctx.stroke();
   if(o.tattered){
     ctx.fillStyle = 'rgba(0,0,0,0.25)';
     for(let i=0;i<3;i++){ ctx.fillRect(-o.bodyW/2 + i*5 - 1, o.bodyH*0.1, 3, 6); }
   }
   if(o.accessory==='gi' || o.accessory==='sword'){ drawAccessory(o.accessory, o.headR, o.bodyW, o.bodyH); }
 
-  // arms
+  // arms: el brazo trasero queda quieto; el brazo delantero + arma sí
+  // apuntan hacia el ángulo real de puntería (rotación pequeña, localizada
+  // solo en el brazo, no en todo el cuerpo).
   if(o.arms){
-    ctx.strokeStyle = o.skin; ctx.lineWidth=4.5; ctx.lineCap='round';
+    ctx.strokeStyle = shadeColor(o.skin, -14); ctx.lineWidth=4.5; ctx.lineCap='round';
     ctx.beginPath(); ctx.moveTo(-o.bodyW/2, -o.bodyH*0.35); ctx.lineTo(-o.bodyW/2-6, o.bodyH*0.05+ (o.limp?4:0)); ctx.stroke();
-    // front arm extends forward (aiming) if gun
-    ctx.beginPath(); ctx.moveTo(o.bodyW/2-2, -o.bodyH*0.35); ctx.lineTo(o.bodyW/2+o.gunLen, -o.bodyH*0.2); ctx.stroke();
-    // weapon line
+
+    ctx.save();
+    ctx.translate(o.bodyW/2-2, -o.bodyH*0.35);
+    // El ángulo de puntería viene en coordenadas del mundo; como el cuerpo
+    // ya está volteado con scale(flip,1), hay que "des-voltear" el ángulo
+    // para que el brazo apunte al lugar correcto en pantalla.
+    const armAngle = facingLeft ? (Math.PI - angle) : angle;
+    ctx.rotate(armAngle);
+    ctx.strokeStyle = o.skin; ctx.lineWidth=4.5; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(o.gunLen,0); ctx.stroke();
     if(o.gunLen>10){
-      ctx.strokeStyle='#cfcfcf'; ctx.lineWidth=3;
-      ctx.beginPath(); ctx.moveTo(o.bodyW/2+o.gunLen, -o.bodyH*0.2); ctx.lineTo(o.bodyW/2+o.gunLen+10, -o.bodyH*0.2); ctx.stroke();
+      const gunGrad = ctx.createLinearGradient(0,-2,0,2);
+      gunGrad.addColorStop(0,'#f2f2f2'); gunGrad.addColorStop(1,'#8a8a8a');
+      ctx.strokeStyle=gunGrad; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.moveTo(o.gunLen,0); ctx.lineTo(o.gunLen+10,0); ctx.stroke();
     }
+    ctx.restore();
   }
 
-  // head
+  // head con degradado radial (luz arriba-izquierda) para dar volumen esférico real
   ctx.save(); ctx.translate(0, -o.bodyH*0.72);
+  const headGrad = ctx.createRadialGradient(-o.headR*0.35,-o.headR*0.4,o.headR*0.15, 0,0,o.headR*1.15);
+  headGrad.addColorStop(0, shadeColor(o.skin, 30));
+  headGrad.addColorStop(0.6, o.skin);
+  headGrad.addColorStop(1, shadeColor(o.skin, -20));
   ctx.beginPath(); ctx.arc(0, 0, o.headR, 0, Math.PI*2);
-  ctx.fillStyle = o.skin; ctx.fill();
+  ctx.fillStyle = headGrad; ctx.fill();
   ctx.strokeStyle='rgba(0,0,0,0.35)'; ctx.lineWidth=1.4; ctx.stroke();
   if(o.hairStyle){ drawHair(o.headR, o.hairStyle, o.hairColor); }
   if(o.headband){
@@ -874,9 +913,20 @@ function drawHumanoid(x, y, angle, opts){
   ctx.restore();
   if(o.accessory==='strawhat'){ drawAccessory('strawhat', o.headR, o.bodyW, o.bodyH); }
 
-  ctx.restore(); // undo rotation
+  ctx.restore(); // undo flip scale
   ctx.shadowBlur=0;
   ctx.restore(); // undo translate
+}
+// Aclara (positivo) u oscurece (negativo) un color hex, para simular luz/sombra sin necesitar sprites nuevos.
+function shadeColor(hex, percent){
+  hex = hex.replace('#','');
+  if(hex.length===3) hex = hex.split('').map(c=>c+c).join('');
+  const num = parseInt(hex,16);
+  let r = (num>>16), g=(num>>8 & 0x00FF), b=(num & 0x0000FF);
+  r = Math.min(255,Math.max(0, r + Math.round(255*(percent/100))));
+  g = Math.min(255,Math.max(0, g + Math.round(255*(percent/100))));
+  b = Math.min(255,Math.max(0, b + Math.round(255*(percent/100))));
+  return '#'+(0x1000000 + r*0x10000 + g*0x100 + b).toString(16).slice(1);
 }
 
 function roundRect(x,y,w,h,r){
