@@ -197,12 +197,12 @@ document.getElementById('ctrlHint').textContent = isTouch
 
 // ---------- characters ----------
 const CHARACTERS = [
-  {id:'goku', name:'Goku', color:'#FF8A3D', power:'Kamehameha: rayo perforante', powerColor:'#8CE6FF', hair:'#1a1a1a', hairStyle:'spiky', skin:'#e8b48a', accessory:'gi'},
-  {id:'gohan', name:'Gohan', color:'#3D6BFF', power:'Masenko: ráfaga frontal', powerColor:'#FFD86B', hair:'#1a1a1a', hairStyle:'spikyShort', skin:'#e8b48a', accessory:'gi'},
-  {id:'trunks', name:'Trunks Futuro', color:'#6A0572', power:'Corte de energía potenciado', powerColor:'#B98CFF', hair:'#8a6b3d', hairStyle:'long', skin:'#e8b48a', accessory:'sword'},
-  {id:'android18', name:'Androide 18', color:'#FFD400', power:'Ráfagas de alta cadencia', powerColor:'#FFF3A0', hair:'#e8d840', hairStyle:'bob', skin:'#f0c8a0', accessory:'none'},
-  {id:'luffy', name:'Luffy', color:'#E4322B', power:'Onda de choque en cono', powerColor:'#FF9C8C', hair:'#2a2018', hairStyle:'short', skin:'#e8b48a', accessory:'strawhat'},
-  {id:'zoro', name:'Zoro', color:'#2EC4B6', power:'Tajo en abanico', powerColor:'#B6FFF3', hair:'#3a7a5a', hairStyle:'short', skin:'#e8b48a', accessory:'sword', headband:'#1a3a2a'},
+  {id:'xolotl', name:'Súper Xólotl', color:'#FF8A3D', power:'Aliento del Cráter: rayo perforante', powerColor:'#8CE6FF', hair:'#1a1a1a', hairStyle:'spiky', skin:'#e8b48a', accessory:'gi', powerType:'blast'},
+  {id:'gohan', name:'Gohan', color:'#3D6BFF', power:'Masenko: ráfaga frontal', powerColor:'#FFD86B', hair:'#1a1a1a', hairStyle:'spikyShort', skin:'#e8b48a', accessory:'gi', powerType:'blast'},
+  {id:'trunks', name:'Trunks Futuro', color:'#6A0572', power:'Corte de energía potenciado', powerColor:'#B98CFF', hair:'#8a6b3d', hairStyle:'long', skin:'#e8b48a', accessory:'sword', powerType:'blast'},
+  {id:'android18', name:'Androide 18', color:'#FFD400', power:'Ráfagas de alta cadencia', powerColor:'#FFF3A0', hair:'#e8d840', hairStyle:'bob', skin:'#f0c8a0', accessory:'none', powerType:'blast'},
+  {id:'torbellino', name:'Torbellino', color:'#E4322B', power:'Torbellino: jala y golpea zombies a su alrededor', powerColor:'#FF9C8C', hair:'#2a2018', hairStyle:'short', skin:'#e8b48a', accessory:'bandana', powerType:'whirlwind'},
+  {id:'zoro', name:'Zoro', color:'#2EC4B6', power:'Tajo en abanico', powerColor:'#B6FFF3', hair:'#3a7a5a', hairStyle:'short', skin:'#e8b48a', accessory:'sword', headband:'#1a3a2a', powerType:'blast'},
 ];
 let selectedChar = CHARACTERS[0];
 
@@ -583,6 +583,23 @@ function update(dt){
     if(powerTimeLeft<=0){ powerActive=false; document.getElementById('powerTimer').style.display='none'; }
   }
 
+  // Torbellino: mientras el poder está activo, jala hacia el jugador y
+  // golpea con daño continuo a todos los zombies atrapados en el remolino.
+  if(powerActive && selectedChar.powerType==='whirlwind'){
+    const WHIRL_RADIUS = 150, WHIRL_PULL = 95, WHIRL_DPS = 42;
+    for(let i=zombies.length-1;i>=0;i--){
+      const z = zombies[i];
+      const d = dist(z.x,z.y,player.x,player.y);
+      if(d < WHIRL_RADIUS && d > player.radius*0.7){
+        const pullAng = Math.atan2(player.y-z.y, player.x-z.x);
+        z.x += Math.cos(pullAng)*WHIRL_PULL*dt;
+        z.y += Math.sin(pullAng)*WHIRL_PULL*dt;
+        if(Math.random()<0.4) particles.push({x:z.x,y:z.y,life:0.15,type:'hit'});
+        damageZombie(z, WHIRL_DPS*dt, i);
+      }
+    }
+  }
+
   // bullets
   for(let i=bullets.length-1;i>=0;i--){
     const b=bullets[i];
@@ -912,6 +929,7 @@ function drawHumanoid(x, y, angle, opts){
   }
   ctx.restore();
   if(o.accessory==='strawhat'){ drawAccessory('strawhat', o.headR, o.bodyW, o.bodyH); }
+  if(o.accessory==='bandana'){ drawAccessory('bandana', o.headR, o.bodyW, o.bodyH); }
 
   ctx.restore(); // undo flip scale
   ctx.shadowBlur=0;
@@ -990,6 +1008,27 @@ function drawAccessory(type, headR, bodyW, bodyH, tint){
   } else if(type==='gi'){
     ctx.fillStyle='rgba(0,0,0,0.18)';
     ctx.beginPath(); ctx.moveTo(-2,-bodyH*0.5); ctx.lineTo(2,-bodyH*0.5); ctx.lineTo(0,bodyH*0.25); ctx.closePath(); ctx.fill();
+  } else if(type==='bandana'){
+    // sombrero de petate/palma: ala ancha y copa baja — silueta de sombrero
+    // campesino mexicano, muy distinta a la redonda de copa corta con cinta
+    // roja de Luffy, para que no se confunda con ese personaje.
+    const topY = -bodyH*0.72-headR*0.55;
+    // ala ancha, ligeramente ovalada
+    ctx.fillStyle = '#D8B978';
+    ctx.beginPath(); ctx.ellipse(0, topY, headR*2.5, headR*0.85, 0, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#A8834A'; ctx.lineWidth = 1.5; ctx.stroke();
+    // copa baja y ancha
+    ctx.fillStyle = '#E4C98A';
+    ctx.beginPath();
+    ctx.moveTo(-headR*1.1, topY);
+    ctx.quadraticCurveTo(-headR*1.05, topY-headR*1.05, 0, topY-headR*1.15);
+    ctx.quadraticCurveTo(headR*1.05, topY-headR*1.05, headR*1.1, topY);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#A8834A'; ctx.lineWidth = 1.2; ctx.stroke();
+    // cordón/barboquejo colgando, ondeando con el viento (le da movimiento propio)
+    const wave = Math.sin(Date.now()/180)*4;
+    ctx.strokeStyle = '#8a6b3d'; ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.moveTo(-headR*1.3, topY+headR*0.3); ctx.quadraticCurveTo(-headR*1.7+wave, topY+headR*1.1, -headR*1.4+wave*1.3, topY+headR*1.9); ctx.stroke();
   }
 }
 
