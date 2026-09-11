@@ -54,6 +54,9 @@
   .charName{font-family:'Bebas Neue'; font-size:15px; letter-spacing:1px;}
   .charPower{font-size:10px; opacity:0.75; margin-top:2px; line-height:1.2;}
 
+  #charBio{max-width:520px; min-height:44px; margin:0 0 20px; padding:10px 16px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,182,39,0.35); border-radius:10px; color:var(--paper); font-family:'Rubik',sans-serif; font-size:12px; line-height:1.5; opacity:0.92; transition:opacity .2s ease;}
+  #charBio .bioName{font-family:'Bebas Neue',sans-serif; color:var(--gold); font-size:15px; letter-spacing:1px; display:block; margin-bottom:3px;}
+
   button.playBtn{font-family:'Bebas Neue'; font-size:24px; letter-spacing:2px; background:var(--sunset); color:var(--paper); border:none; padding:14px 40px; border-radius:40px; cursor:pointer; box-shadow:0 6px 0 #a8401c; transition:.1s;}
   button.playBtn:active{transform:translateY(4px); box-shadow:0 2px 0 #a8401c;}
 
@@ -77,6 +80,8 @@
 
   #ctrlHint{position:absolute; bottom:10px; left:50%; transform:translateX(-50%); color:rgba(247,241,230,0.55); font-size:11px; z-index:5; letter-spacing:0.5px;}
   #fsBtn{position:absolute; top:10px; right:10px; z-index:9; width:34px; height:34px; border-radius:8px; background:rgba(26,20,35,0.6); border:1px solid rgba(255,182,39,0.5); color:var(--gold); font-size:16px; display:none; align-items:center; justify-content:center;}
+  #muteBtn{position:absolute; top:10px; right:52px; z-index:9; width:34px; height:34px; border-radius:8px; background:rgba(26,20,35,0.6); border:1px solid rgba(255,182,39,0.5); color:var(--gold); font-size:16px; display:flex; align-items:center; justify-content:center; cursor:pointer;}
+  #muteBtnStart{position:absolute; top:10px; right:10px; z-index:21; width:34px; height:34px; border-radius:8px; background:rgba(26,20,35,0.6); border:1px solid rgba(255,182,39,0.5); color:var(--gold); font-size:16px; display:flex; align-items:center; justify-content:center; cursor:pointer;}
 
   #rotateOverlay{position:fixed; inset:0; background:var(--shadow); z-index:100; display:none; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px;}
   #rotateOverlay .icon{font-size:54px; margin-bottom:14px; animation:rotateHint 1.6s ease-in-out infinite;}
@@ -105,7 +110,7 @@
       <div class="mapLabel" id="mapLabelHud">Mapa 1 · Centro de Tecalitlán</div>
       <div class="hud-title" id="waveLabel">OLEADA 1</div>
       <div class="hud-row"><span class="label">BASE</span><div class="bar"><div class="bar-fill base" id="baseBar" style="width:100%"></div></div></div>
-      <div class="hud-row"><span class="label" id="charNameHud">GOKU</span><div class="bar"><div class="bar-fill" id="hpBar" style="width:100%"></div></div></div>
+      <div class="hud-row"><span class="label" id="charNameHud">XÓLOTL</span><div class="bar"><div class="bar-fill" id="hpBar" style="width:100%"></div></div></div>
     </div>
     <div class="hud-block" style="text-align:right;">
       <div class="label" style="color:var(--gold)">KILLS</div>
@@ -118,6 +123,7 @@
 
   <div id="startScreen">
     <div id="startBgPhoto"></div>
+    <button id="muteBtnStart" title="Silenciar música">🔊</button>
     <div class="mapLabel" id="startMapLabel">Mapa 1 de 8 · Prototipo</div>
     <h1>ASEDIO TECALITLÁN</h1>
     <h2>Elige a tu guerrero y defiende la plaza</h2>
@@ -128,6 +134,7 @@
         <canvas id="charPreviewCanvas" width="110" height="130" style="position:relative;"></canvas>
       </div>
     </div>
+    <div id="charBio"></div>
     <button class="playBtn" id="playBtn">JUGAR</button>
     <div id="fsHint" style="color:rgba(247,241,230,0.55); font-size:11px; margin-top:14px; max-width:280px; line-height:1.4;"></div>
     <div class="credit">CHAVARRÍA PRODUCTION</div>
@@ -156,6 +163,7 @@
   <div id="ctrlHint"></div>
   <div id="inGameCredit">©AARÓN CHAVARRÍA</div>
   <button id="fsBtn" title="Pantalla completa">⛶</button>
+  <button id="muteBtn" title="Silenciar música">🔊</button>
 
   <div id="rotateOverlay">
     <div class="icon">📱</div>
@@ -195,14 +203,126 @@ document.getElementById('ctrlHint').textContent = isTouch
   ? 'Joystick izq: moverte · Joystick der: apuntar/disparar · Botón: poder'
   : 'WASD: moverte · Ratón: apuntar y disparar · Barra espaciadora: poder';
 
+// ---------- audio (música y efectos generados por código, 100% original) ----------
+const GameAudio = (function(){
+  let ctx=null, master=null, musicGain=null, sfxGain=null;
+  let muted = false;
+  let musicTimer = null;
+  let currentTrack = null;
+  let step = 0;
+  const bpm = 96;
+
+  function ensureCtx(){
+    if(!ctx){
+      ctx = new (window.AudioContext||window.webkitAudioContext)();
+      master = ctx.createGain(); master.gain.value = 1; master.connect(ctx.destination);
+      musicGain = ctx.createGain(); musicGain.gain.value = 0.32; musicGain.connect(master);
+      sfxGain = ctx.createGain(); sfxGain.gain.value = 0.5; sfxGain.connect(master);
+    }
+    if(ctx.state==='suspended'){ ctx.resume(); }
+    return ctx;
+  }
+
+  function tone(freq, start, dur, type, dest, vol, glideTo){
+    const osc = ctx.createOscillator();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, start);
+    if(glideTo) osc.frequency.exponentialRampToValueAtTime(glideTo, start+dur);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, start);
+    g.gain.linearRampToValueAtTime(vol, start+0.015);
+    g.gain.exponentialRampToValueAtTime(0.001, start+dur);
+    osc.connect(g); g.connect(dest);
+    osc.start(start); osc.stop(start+dur+0.05);
+  }
+
+  function noiseHit(start, dur, vol, dest){
+    const size = Math.max(1, Math.floor(ctx.sampleRate*dur));
+    const buf = ctx.createBuffer(1, size, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for(let i=0;i<size;i++){ data[i] = (Math.random()*2-1) * (1-i/size); }
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const g = ctx.createGain(); g.gain.value = vol;
+    src.connect(g); g.connect(dest);
+    src.start(start);
+  }
+
+  // Riff propio en La menor, con aire de "mariachi de ultratumba" para encajar con el tema del juego
+  const BASS      = [110,110,130.81,98, 110,110,146.83,130.81];
+  const LEAD_MENU = [440,523.25,493.88,440, 392,440,523.25,587.33];
+  const LEAD_GAME = [440,440,523.25,440, 392,392,349.23,392];
+
+  function scheduleLoop(mode){
+    ensureCtx();
+    stopMusic();
+    currentTrack = mode;
+    const stepDur = 60/bpm/2;
+    const lead = mode==='game' ? LEAD_GAME : LEAD_MENU;
+    step = 0;
+    (function scheduleStep(){
+      if(!muted){
+        const t = ctx.currentTime + 0.05;
+        tone(BASS[step % BASS.length], t, stepDur*1.9, 'triangle', musicGain, 0.45);
+        if(step % 2 === 0) tone(lead[step % lead.length], t, stepDur*0.9, 'square', musicGain, 0.14);
+        if(mode==='game' && step % 4 === 2) noiseHit(t, 0.07, 0.12, musicGain);
+      }
+      musicTimer = setTimeout(scheduleStep, stepDur*1000);
+      step++;
+    })();
+  }
+  function stopMusic(){ if(musicTimer){ clearTimeout(musicTimer); musicTimer=null; } }
+
+  function sfx(type){
+    if(!ctx || muted) return;
+    const t = ctx.currentTime;
+    if(type==='shoot')       tone(880,t,0.05,'square',sfxGain,0.10,620);
+    else if(type==='hit')    tone(240,t,0.06,'sawtooth',sfxGain,0.12,140);
+    else if(type==='death'){ noiseHit(t,0.16,0.22,sfxGain); tone(150,t,0.15,'sawtooth',sfxGain,0.14,55); }
+    else if(type==='pickup') tone(660,t,0.09,'sine',sfxGain,0.2,990);
+    else if(type==='power')  tone(220,t,0.35,'sawtooth',sfxGain,0.22,880);
+    else if(type==='wave'){  tone(330,t,0.12,'square',sfxGain,0.2,440); tone(440,t+0.12,0.14,'square',sfxGain,0.2,554); }
+    else if(type==='gameover') tone(392,t,0.35,'sawtooth',sfxGain,0.2,180);
+  }
+
+  function setMuted(v){
+    muted = v;
+    if(musicGain) musicGain.gain.value = muted?0:0.32;
+    if(sfxGain) sfxGain.gain.value = muted?0:0.5;
+  }
+  function toggleMute(){ setMuted(!muted); return muted; }
+  function isMuted(){ return muted; }
+
+  return { ensureCtx, scheduleLoop, stopMusic, sfx, toggleMute, isMuted };
+})();
+
+// Los navegadores exigen un gesto del usuario antes de reproducir audio:
+// arrancamos la música de menú en la primera interacción.
+let audioStarted = false;
+function startAudioOnce(){
+  if(audioStarted) return;
+  audioStarted = true;
+  GameAudio.ensureCtx();
+  GameAudio.scheduleLoop('menu');
+  window.removeEventListener('pointerdown', startAudioOnce);
+  window.removeEventListener('keydown', startAudioOnce);
+}
+window.addEventListener('pointerdown', startAudioOnce);
+window.addEventListener('keydown', startAudioOnce);
+
 // ---------- characters ----------
 const CHARACTERS = [
-  {id:'xolotl', name:'Súper Xólotl', color:'#FF8A3D', power:'Aliento del Cráter: rayo perforante', powerColor:'#8CE6FF', hair:'#1a1a1a', hairStyle:'spiky', skin:'#e8b48a', accessory:'gi', powerType:'blast'},
-  {id:'gohan', name:'Gohan', color:'#3D6BFF', power:'Masenko: ráfaga frontal', powerColor:'#FFD86B', hair:'#1a1a1a', hairStyle:'spikyShort', skin:'#e8b48a', accessory:'gi', powerType:'blast'},
-  {id:'trunks', name:'Trunks Futuro', color:'#6A0572', power:'Corte de energía potenciado', powerColor:'#B98CFF', hair:'#8a6b3d', hairStyle:'long', skin:'#e8b48a', accessory:'sword', powerType:'blast'},
-  {id:'android18', name:'Androide 18', color:'#FFD400', power:'Ráfagas de alta cadencia', powerColor:'#FFF3A0', hair:'#e8d840', hairStyle:'bob', skin:'#f0c8a0', accessory:'none', powerType:'blast'},
-  {id:'torbellino', name:'Torbellino', color:'#E4322B', power:'Torbellino: jala y golpea zombies a su alrededor', powerColor:'#FF9C8C', hair:'#2a2018', hairStyle:'short', skin:'#e8b48a', accessory:'bandana', powerType:'whirlwind'},
-  {id:'zoro', name:'Zoro', color:'#2EC4B6', power:'Tajo en abanico', powerColor:'#B6FFF3', hair:'#3a7a5a', hairStyle:'short', skin:'#e8b48a', accessory:'sword', headband:'#1a3a2a', powerType:'blast'},
+  {id:'xolotl', name:'Súper Xólotl', color:'#FF8A3D', power:'Aliento del Cráter: rayo perforante', powerColor:'#8CE6FF', hair:'#1a1a1a', hairStyle:'spiky', skin:'#e8b48a', accessory:'gi', powerType:'blast',
+    legend:'Cuentan los abuelos de Tecalitlán que Xólotl, el perro-relámpago que guía a los muertos, despertó la noche en que la plaza empezó a llenarse de cadáveres caminantes. Ahora pelea del lado de los vivos, escupiendo fuego del inframundo contra quienes ya no deberían caminar.'},
+  {id:'tonatiuh', name:'Tonatiuh', color:'#3D6BFF', power:'Resplandor Solar: ráfaga frontal', powerColor:'#FFD86B', hair:'#1a1a1a', hairStyle:'spikyShort', skin:'#e8b48a', accessory:'gi', powerType:'blast',
+    legend:'Hijo del sol que nunca se pone sobre Tecalitlán, Tonatiuh convierte su furia en resplandor puro. Dicen que cuando alza los brazos, hasta los zombies bajan la mirada, cegados por su luz.'},
+  {id:'mixcoatl', name:'Mixcóatl', color:'#6A0572', power:'Corte de energía potenciado', powerColor:'#B98CFF', hair:'#8a6b3d', hairStyle:'long', skin:'#e8b48a', accessory:'sword', powerType:'blast',
+    legend:'Cazador de estrellas y guardián de los caminos, Mixcóatl llegó al pueblo siguiendo el rastro de los primeros ataques. Su espada de energía corta la niebla y a los muertos por igual, sin dejarlos levantarse otra vez.'},
+  {id:'metralla', name:'Metralla', color:'#FFD400', power:'Ráfagas de alta cadencia', powerColor:'#FFF3A0', hair:'#e8d840', hairStyle:'bob', skin:'#f0c8a0', accessory:'none', powerType:'blast',
+    legend:'Antes reparaba camionetas en el taller junto al mercado; ahora convirtió su ingenio en una de las armas más temidas de la resistencia. Dispara tan rápido que los zombies la reconocen por el sonido antes de verla.'},
+  {id:'torbellino', name:'Torbellino', color:'#E4322B', power:'Torbellino: jala y golpea zombies a su alrededor', powerColor:'#FF9C8C', hair:'#2a2018', hairStyle:'short', skin:'#e8b48a', accessory:'bandana', powerType:'whirlwind',
+    legend:'Con su sombrero de petate y el viento como aliado, Torbellino aprendió a jalar a los zombies hacia su remolino antes de que se acerquen a la plaza. Nadie corre más rápido entre las calles de Tecalitlán.'},
+  {id:'tepoztli', name:'Tepoztli', color:'#2EC4B6', power:'Tajo en abanico', powerColor:'#B6FFF3', hair:'#3a7a5a', hairStyle:'short', skin:'#e8b48a', accessory:'sword', headband:'#1a3a2a', powerType:'blast',
+    legend:'Nombrado como el antiguo señor del metal, Tepoztli forjó su propia espada con los restos de la herrería del pueblo. Pelea en silencio, cortando en abanico a cualquier zombie que se atreva a cruzar su camino.'},
 ];
 let selectedChar = CHARACTERS[0];
 
@@ -216,6 +336,7 @@ CHARACTERS.forEach((c,i)=>{
     [...charSelectEl.children].forEach(el=>{ if(el.classList.contains('charCard')) el.classList.remove('selected'); });
     card.classList.add('selected');
     renderCharPreview(c);
+    renderCharBio(c);
   });
   charSelectEl.appendChild(card);
 });
@@ -234,8 +355,18 @@ function renderCharPreview(c){
   });
   ctx = savedCtx;
 }
+// Leyenda/biografía del guerrero elegido, se muestra al abrir el juego y al cambiar de personaje
+const charBioEl = document.getElementById('charBio');
+function renderCharBio(c){
+  charBioEl.style.opacity='0';
+  requestAnimationFrame(()=>{
+    charBioEl.innerHTML = `<span class="bioName">${c.name}</span>${c.legend}`;
+    charBioEl.style.opacity='0.92';
+  });
+}
 renderCharPreview(selectedChar);
-// Botón de pantalla completa como una tarjeta más de la cuadrícula (junto a Zoro),
+renderCharBio(selectedChar);
+// Botón de pantalla completa como una tarjeta más de la cuadrícula (junto a Tepoztli),
 // así siempre queda visible y fácil de tocar en Android.
 const fsCard = document.createElement('button');
 fsCard.id = 'fsBtnStart';
@@ -423,6 +554,7 @@ function activatePower(){
   if(powerActive || bossIntroLock) return;
   powerActive = true; powerTimeLeft = POWER_DURATION;
   document.getElementById('powerTimer').style.display='block';
+  GameAudio.sfx('power');
 }
 
 // ---------- zombie / boss factories ----------
@@ -483,6 +615,7 @@ function startWave(){
     zombiesToSpawn = 5 + wave*3;
     spawnTimer = 0;
     showBanner('OLEADA ' + wave, wave===1 ? 'DEFIENDE LA PLAZA' : 'MÁS ZOMBIES SE ACERCAN');
+    GameAudio.sfx('wave');
   } else {
     spawnBoss();
   }
@@ -531,16 +664,19 @@ function shoot(angle){
     dmg, life: 1.1, pierce, power: powerActive
   });
   fireCooldown = powerActive ? 0.07 : (hasRifle? 0.14 : 0.32);
+  GameAudio.sfx('shoot');
 }
 
 function damageZombie(z, dmg, idx){
   z.hp -= dmg;
   particles.push({x:z.x,y:z.y,life:0.2,type:'hit'});
+  GameAudio.sfx('hit');
   if(z.hp<=0){
     kills++;
     particles.push({x:z.x,y:z.y,life:0.4,type:'death', color: z.kind==='mariachi' ? '#FFB627':'#ff5b5b'});
     if(Math.random()<0.12) spawnPickup(Math.random()<0.5?'ammo':'orb', z.x, z.y);
     zombies.splice(idx,1);
+    GameAudio.sfx('death');
   }
 }
 
@@ -738,8 +874,8 @@ function update(dt){
   for(let i=pickups.length-1;i>=0;i--){
     const p=pickups[i]; p.bob+=dt*3;
     if(dist(p.x,p.y,player.x,player.y) < player.radius+18){
-      if(p.type==='rifle'){ hasRifle=true; ammo=maxAmmo; }
-      else if(p.type==='ammo'){ ammo=Math.min(maxAmmo, ammo+10); }
+      if(p.type==='rifle'){ hasRifle=true; ammo=maxAmmo; GameAudio.sfx('pickup'); }
+      else if(p.type==='ammo'){ ammo=Math.min(maxAmmo, ammo+10); GameAudio.sfx('pickup'); }
       else if(p.type==='orb'){ activatePower(); }
       pickups.splice(i,1);
     }
@@ -1010,8 +1146,7 @@ function drawAccessory(type, headR, bodyW, bodyH, tint){
     ctx.beginPath(); ctx.moveTo(-2,-bodyH*0.5); ctx.lineTo(2,-bodyH*0.5); ctx.lineTo(0,bodyH*0.25); ctx.closePath(); ctx.fill();
   } else if(type==='bandana'){
     // sombrero de petate/palma: ala ancha y copa baja — silueta de sombrero
-    // campesino mexicano, muy distinta a la redonda de copa corta con cinta
-    // roja de Luffy, para que no se confunda con ese personaje.
+    // campesino mexicano, con diseño propio.
     const topY = -bodyH*0.72-headR*0.55;
     // ala ancha, ligeramente ovalada
     ctx.fillStyle = '#D8B978';
@@ -1259,6 +1394,8 @@ function startGame(){
   document.getElementById('mapLabelHud').textContent = 'Mapa 1 · ' + currentMap().name;
   document.getElementById('charNameHud').textContent = selectedChar.name.toUpperCase();
   state='playing';
+  startAudioOnce();
+  GameAudio.scheduleLoop('game');
   showMapIntro(startWave);
 }
 function endGame(won, isFinal){
@@ -1268,6 +1405,8 @@ function endGame(won, isFinal){
   document.getElementById('endScreen').style.display='flex';
   document.getElementById('endTitle').textContent = isFinal ? '¡TECALITLÁN A SALVO!' : (won ? 'MAPA SUPERADO' : 'BASE DESTRUIDA');
   document.getElementById('endStats').textContent = `Mapa: ${currentMap().name} · Oleada: ${wave} · Kills: ${kills}`;
+  GameAudio.sfx('gameover');
+  GameAudio.scheduleLoop('menu');
 }
 function backToSelect(){
   document.getElementById('endScreen').style.display='none';
@@ -1283,6 +1422,20 @@ document.getElementById('retryBtn').addEventListener('click', startGame);
 document.getElementById('fsBtn').addEventListener('click', tryLockLandscape);
 document.getElementById('fsBtnStart').addEventListener('click', tryLockLandscape);
 document.getElementById('backToSelectBtn').addEventListener('click', backToSelect);
+
+function syncMuteButtons(){
+  const icon = GameAudio.isMuted() ? '🔇' : '🔊';
+  document.getElementById('muteBtn').textContent = icon;
+  document.getElementById('muteBtnStart').textContent = icon;
+}
+function onMuteClick(e){
+  e.stopPropagation();
+  startAudioOnce();
+  GameAudio.toggleMute();
+  syncMuteButtons();
+}
+document.getElementById('muteBtn').addEventListener('click', onMuteClick);
+document.getElementById('muteBtnStart').addEventListener('click', onMuteClick);
 
 })();
 </script>
