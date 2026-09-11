@@ -54,7 +54,9 @@
   .charName{font-family:'Bebas Neue'; font-size:15px; letter-spacing:1px;}
   .charPower{font-size:10px; opacity:0.75; margin-top:2px; line-height:1.2;}
 
-  #charBio{max-width:520px; min-height:44px; margin:0 0 20px; padding:10px 16px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,182,39,0.35); border-radius:10px; color:var(--paper); font-family:'Rubik',sans-serif; font-size:12px; line-height:1.5; opacity:0.92; transition:opacity .2s ease;}
+  #charBio{position:absolute; left:14px; top:50%; transform:translateY(-50%); width:clamp(140px,26vw,190px); max-height:64vh; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; padding:10px 12px; background:rgba(0,0,0,0.45); border:1px solid rgba(255,182,39,0.35); border-radius:10px; color:var(--paper); font-family:'Rubik',sans-serif; font-size:11.5px; line-height:1.5; opacity:0.92; transition:opacity .2s ease; text-align:left; z-index:2; pointer-events:auto;}
+  #charBio::-webkit-scrollbar{width:5px;}
+  #charBio::-webkit-scrollbar-thumb{background:rgba(255,182,39,0.5); border-radius:3px;}
   #charBio .bioName{font-family:'Bebas Neue',sans-serif; color:var(--gold); font-size:15px; letter-spacing:1px; display:block; margin-bottom:3px;}
 
   button.playBtn{font-family:'Bebas Neue'; font-size:24px; letter-spacing:2px; background:var(--sunset); color:var(--paper); border:none; padding:14px 40px; border-radius:40px; cursor:pointer; box-shadow:0 6px 0 #a8401c; transition:.1s;}
