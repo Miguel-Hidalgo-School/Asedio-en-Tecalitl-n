@@ -9,6 +9,8 @@
 <meta name="theme-color" content="#1A1423">
 <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22Asedio%20Tecalitl%C3%A1n%22,%22short_name%22:%22Tecalitl%C3%A1n%22,%22display%22:%22fullscreen%22,%22orientation%22:%22landscape%22,%22start_url%22:%22.%22,%22background_color%22:%22%231A1423%22,%22theme_color%22:%22%231A1423%22}">
 <title>Asedio Tecalitlán</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rubik:wght@400;600;800&display=swap');
 
@@ -36,11 +38,13 @@
   .label{font-size:13px; font-family:'Rubik',sans-serif; font-weight:600;}
 
   #powerTimer{position:absolute; top:80px; left:50%; transform:translateX(-50%); color:var(--gold); font-family:'Bebas Neue'; font-size:20px; text-shadow:0 0 8px rgba(255,182,39,0.9); display:none; z-index:6;}
+  #coachHint{position:absolute; top:14%; left:50%; transform:translateX(-50%); background:rgba(20,10,20,0.88); border:2px solid var(--gold); border-radius:14px; padding:9px 20px; color:#fff; font-family:'Bebas Neue'; font-size:19px; letter-spacing:0.5px; text-align:center; display:none; z-index:9; box-shadow:0 4px 16px rgba(0,0,0,0.4); pointer-events:none; animation:coachPop 0.25s ease;}
+  @keyframes coachPop{from{transform:translateX(-50%) scale(0.85); opacity:0;} to{transform:translateX(-50%) scale(1); opacity:1;}}
 
   #waveBanner{position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); font-family:'Bebas Neue'; color:var(--paper); font-size:15vw; text-shadow:0 4px 20px rgba(0,0,0,0.6); opacity:0; pointer-events:none; z-index:6; text-align:center; line-height:0.9;}
   #waveBanner span{display:block; font-size:0.28em; color:var(--gold); letter-spacing:3px;}
 
-  #startScreen,#endScreen{position:absolute; inset:0; background:radial-gradient(ellipse at center, #7a2f4a 0%, #241326 80%); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:20; text-align:center; padding:20px;}
+  #startScreen,#endScreen{position:absolute; inset:0; background:radial-gradient(ellipse at center, #7a2f4a 0%, #241326 80%); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:20; text-align:center; padding:20px; overflow-y:auto; -webkit-overflow-scrolling:touch;}
   #startScreen{overflow:hidden;}
   #startBgPhoto{position:absolute; inset:0; background-size:cover; background-position:center; opacity:0; transition:opacity .6s ease; z-index:-1;}
   #startBgPhoto.loaded{opacity:0.4;}
@@ -68,6 +72,13 @@
   #inGameCredit{position:absolute; bottom:6px; right:10px; font-family:'Rubik'; font-size:10px; letter-spacing:1px; color:rgba(247,241,230,0.35); z-index:5; pointer-events:none;}
 
   #endScreen{display:none;}
+  .leaderboardBox{margin-top:16px; width:280px; max-width:85vw; max-height:220px; overflow-y:auto; background:rgba(20,10,20,0.55); border:1.5px solid var(--gold); border-radius:12px; padding:10px 14px;}
+  .leaderboardBox .lbTitle{font-family:'Bebas Neue',sans-serif; color:var(--gold); font-size:13px; letter-spacing:2px; margin-bottom:6px;}
+  .leaderboardBox .lbRow{display:flex; justify-content:space-between; gap:8px; font-family:'Bebas Neue',sans-serif; color:var(--paper); font-size:14px; padding:3px 0; border-bottom:1px solid rgba(247,241,230,0.12);}
+  .leaderboardBox .lbRow:last-child{border-bottom:none;}
+  .leaderboardBox .lbRank{color:var(--gold); width:22px; flex-shrink:0; text-align:left;}
+  .leaderboardBox .lbName{flex:1; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .leaderboardBox .lbEmpty{color:rgba(247,241,230,0.6); font-size:13px; padding:6px 0;}
   #endScreen h1{font-family:'Bebas Neue'; font-size:min(12vw,60px); color:var(--gold);}
   #endStats{color:var(--paper); font-size:16px; margin:10px 0 24px;}
 
@@ -122,6 +133,7 @@
 
   <div id="powerTimer"></div>
   <div id="waveBanner"></div>
+  <div id="coachHint"></div>
 
   <div id="startScreen">
     <div id="startBgPhoto"></div>
@@ -137,18 +149,23 @@
       </div>
     </div>
     <div id="charBio"></div>
+    <input id="playerNameInput" maxlength="14" placeholder="Tu nombre o alias (para el récord)" style="font-family:'Bebas Neue',sans-serif; font-size:16px; letter-spacing:1px; text-align:center; padding:10px 16px; border-radius:30px; border:2px solid var(--gold); background:rgba(20,10,20,0.55); color:var(--paper); width:240px; max-width:80vw; margin:10px 0 4px; outline:none;">
     <button class="playBtn" id="playBtn">JUGAR</button>
     <div id="fsHint" style="color:rgba(247,241,230,0.55); font-size:11px; margin-top:14px; max-width:280px; line-height:1.4;"></div>
+    <button id="toggleLeaderboardStart" style="margin-top:14px; background:transparent; border:1.5px solid rgba(247,241,230,0.4); color:var(--paper); font-family:'Bebas Neue',sans-serif; letter-spacing:1px; font-size:13px; padding:7px 18px; border-radius:20px; cursor:pointer; opacity:0.85;">🏆 VER RÉCORD</button>
+    <div id="leaderboardStart" class="leaderboardBox" style="display:none;"></div>
     <div class="credit">CHAVARRÍA PRODUCTION</div>
   </div>
 
   <div id="endScreen">
     <h1 id="endTitle">BASE DESTRUIDA</h1>
     <div id="endStats"></div>
+    <div id="endScoreSaved" style="color:var(--gold); font-family:'Bebas Neue'; font-size:14px; letter-spacing:1px; margin-bottom:6px; min-height:18px;"></div>
     <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
       <button class="playBtn" id="retryBtn">REINTENTAR</button>
       <button id="backToSelectBtn" style="font-family:'Bebas Neue'; font-size:18px; letter-spacing:1px; background:transparent; color:var(--paper); border:2px solid var(--paper); padding:12px 26px; border-radius:40px; cursor:pointer; opacity:0.85;">ELEGIR OTRO GUERRERO</button>
     </div>
+    <div id="leaderboardEnd" class="leaderboardBox"></div>
     <div class="credit">CHAVARRÍA PRODUCTION</div>
   </div>
 
@@ -674,8 +691,10 @@ function spawnMariachiZombie(){
 }
 
 let bossIntroLock = false;
+let bossDefeatHandled = false;
 function spawnBoss(){
   bossActive = true;
+  bossDefeatHandled = false;
   const m = currentMap();
   boss = {
     x: canvas.width/2, y: -80, radius:34, speed:38,
@@ -761,7 +780,10 @@ function damageZombie(z, dmg, idx){
   if(z.hp<=0){
     kills++;
     particles.push({x:z.x,y:z.y,life:0.4,type:'death', color: z.kind==='mariachi' ? '#FFB627':'#ff5b5b'});
-    if(Math.random()<0.12) spawnPickup(Math.random()<0.5?'ammo':'orb', z.x, z.y);
+    if(Math.random()<0.22){
+      const roll = Math.random();
+      spawnPickup(roll<0.5?'ammo':(roll<0.8?'orb':'health'), z.x, z.y);
+    }
     zombies.splice(idx,1);
     GameAudio.sfx('death');
     GameAudio.sfx('zombieScream');
@@ -769,8 +791,50 @@ function damageZombie(z, dmg, idx){
 }
 
 // ---------- update ----------
+// ---------- avisos tipo "coach" para jugadores novatos ----------
+let coachCooldowns = {}; // por tipo de aviso, para no repetirlo a cada rato
+let coachHideTimer = null;
+function showCoachHint(text, cooldownKey, cooldownSecs, spokenText){
+  const now = performance.now()/1000;
+  if(coachCooldowns[cooldownKey] && now - coachCooldowns[cooldownKey] < cooldownSecs) return;
+  coachCooldowns[cooldownKey] = now;
+  const el = document.getElementById('coachHint');
+  el.textContent = text;
+  el.style.display = 'block';
+  el.style.animation = 'none'; void el.offsetWidth; el.style.animation = 'coachPop 0.25s ease';
+  clearTimeout(coachHideTimer);
+  coachHideTimer = setTimeout(()=>{ el.style.display='none'; }, 2600);
+  speakLine(spokenText || text, 1.1, 1.05);
+}
+function updateCoachHints(dt){
+  // Se revisan en orden de prioridad: solo se muestra UNA a la vez, la más
+  // urgente primero, para no saturar la pantalla del jugador nuevo.
+  if(playerHP > 0 && playerHP/playerMaxHP < 0.3){
+    showCoachHint('⚠️ ¡CÚRATE! TU VIDA ESTÁ MUY BAJA', 'health', 9, 'Cuidado, tienes poca vida, cúrate');
+    return;
+  }
+  if(baseHP > 0 && baseHP/baseMaxHP < 0.3){
+    showCoachHint('🛡️ ¡CUIDADO! LA BASE ESTÁ CASI DESTRUIDA', 'base', 9, 'Cuidado, están destruyendo la base');
+    return;
+  }
+  if(bossActive){
+    showCoachHint('💀 ¡CUIDADO, EL JEFE ESTÁ CERCA!', 'boss', 14, 'Cuidado, el jefe está cerca');
+    return;
+  }
+  if(hasRifle && ammo<=0){
+    showCoachHint('🔫 SIN BALAS — RECOGE MUNICIÓN DEL SUELO', 'ammo', 18, 'Sin balas, recoge munición');
+    return;
+  }
+  if(pickups.some(p=>p.type==='orb') && !powerActive){
+    showCoachHint('⚡ ¡HAY UN PODER CERCA, RECÓGELO!', 'power', 12, 'Hay un poder cerca, recógelo');
+    return;
+  }
+}
+
+
 function update(dt){
   if(state!=='playing') return;
+  updateCoachHints(dt);
 
   // movement input
   let mx=0,my=0;
@@ -952,7 +1016,8 @@ function update(dt){
         playerHP -= 10*dt; if(playerHP<0) playerHP=0;
       }
     }
-    if(boss.hp<=0){
+    if(boss.hp<=0 && !bossDefeatHandled){
+      bossDefeatHandled = true;
       kills+=5;
       particles.push({x:boss.x,y:boss.y,life:0.6,type:'death',color:'#FFB627'});
       GameAudio.sfx('bossDeathRoar', {pitch: boss.roarPitch*0.85});
@@ -965,6 +1030,11 @@ function update(dt){
         showBanner('¡' + m.name.toUpperCase() + ' SUPERADO!', 'Avanzando al siguiente mapa');
         setTimeout(()=>{
           mapIndex++; wave = 1; zombies=[]; bullets=[];
+          // Limpieza completa del estado de oleada anterior: si algo del mapa
+          // pasado quedó a medio disparar (un temporizador viejo, un conteo
+          // pendiente), aquí se resetea todo para que el mapa nuevo SIEMPRE
+          // empiece en la oleada 1 y no salte directo al jefe.
+          waveInProgress = false; zombiesToSpawn = 0; spawnTimer = 0;
           document.getElementById('mapLabelHud').textContent = 'Mapa ' + (mapIndex+1) + ' · ' + currentMap().name;
           if(state==='playing') showMapIntro(startWave);
         }, 2200);
@@ -979,6 +1049,7 @@ function update(dt){
       if(p.type==='rifle'){ hasRifle=true; ammo=maxAmmo; GameAudio.sfx('pickup'); }
       else if(p.type==='ammo'){ ammo=Math.min(maxAmmo, ammo+10); GameAudio.sfx('pickup'); }
       else if(p.type==='orb'){ activatePower(); }
+      else if(p.type==='health'){ playerHP=Math.min(playerMaxHP, playerHP+30); particles.push({x:p.x,y:p.y,life:0.5,type:'heal'}); GameAudio.sfx('pickup'); }
       pickups.splice(i,1);
     }
   }
@@ -1475,6 +1546,20 @@ function drawBullets(){
 function drawPickups(){
   for(const p of pickups){
     const y = p.y + Math.sin(p.bob)*4;
+    if(p.type==='health'){
+      // ícono universal de curación: cruz roja sobre círculo blanco, con
+      // resplandor para que se note claramente entre los zombies.
+      ctx.save();
+      ctx.shadowColor='#ff5a5a'; ctx.shadowBlur=14;
+      ctx.beginPath(); ctx.arc(p.x,y,11,0,Math.PI*2);
+      ctx.fillStyle='#fff'; ctx.fill();
+      ctx.strokeStyle='#e23c3c'; ctx.lineWidth=1.5; ctx.stroke();
+      ctx.fillStyle='#e23c3c';
+      ctx.fillRect(p.x-2.5, y-7, 5, 14);
+      ctx.fillRect(p.x-7, y-2.5, 14, 5);
+      ctx.restore();
+      continue;
+    }
     ctx.beginPath();
     if(p.type==='orb'){ ctx.arc(p.x,y,10,0,Math.PI*2); ctx.fillStyle='#8CE6FF'; ctx.shadowColor='#8CE6FF'; ctx.shadowBlur=16; }
     else if(p.type==='rifle'){ ctx.rect(p.x-12,y-4,24,8); ctx.fillStyle='#c9c9c9'; }
@@ -1490,6 +1575,12 @@ function drawParticles(){
     else if(p.type==='death'){ ctx.beginPath(); ctx.arc(p.x,p.y,10*(1-p.life),0,Math.PI*2); ctx.strokeStyle=p.color||'#fff'; ctx.lineWidth=3; ctx.stroke(); }
     else if(p.type==='shock'){ ctx.beginPath(); ctx.arc(p.x,p.y,220*(1-p.life),0,Math.PI*2); ctx.strokeStyle='#FFB627'; ctx.lineWidth=4; ctx.stroke(); }
     else if(p.type==='shield'){ ctx.beginPath(); ctx.arc(p.x,p.y,6,0,Math.PI*2); ctx.strokeStyle='#B98CFF'; ctx.lineWidth=2; ctx.stroke(); }
+    else if(p.type==='heal'){
+      const ry = p.y - (1-p.life)*20;
+      ctx.fillStyle='#3ddc6a';
+      ctx.font='bold 18px sans-serif'; ctx.textAlign='center';
+      ctx.fillText('+', p.x, ry);
+    }
     else if(p.type==='ember'){
       ctx.beginPath(); ctx.arc(p.x,p.y, 3.5*p.life+0.5, 0, Math.PI*2);
       ctx.fillStyle = p.life>0.15 ? '#FFB627' : '#E4322B';
@@ -1521,8 +1612,86 @@ function loop(t){
 }
 requestAnimationFrame(loop);
 
+// ---------- Firebase: récord global ----------
+// Proyecto de Firebase dedicado solo a este juego (separado del Sistema Escolar).
+const GAME_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAtyTqcSC55mK7DV6fcqkgsaOZOCNK7WiQ",
+  authDomain: "asedio-tecalitlan.firebaseapp.com",
+  databaseURL: "https://asedio-tecalitlan-default-rtdb.firebaseio.com",
+  projectId: "asedio-tecalitlan",
+  storageBucket: "asedio-tecalitlan.firebasestorage.app",
+  messagingSenderId: "388006729459",
+  appId: "1:388006729459:web:b0da0e1ff430df4b468986"
+};
+let recordsRef = null;
+try{
+  firebase.initializeApp(GAME_FIREBASE_CONFIG);
+  recordsRef = firebase.database().ref('records');
+}catch(e){ console.warn('Firebase del récord no configurado todavía', e); }
+
+const PLAYER_NAME_KEY = 'asedioTecalitlanPlayerName';
+function getPlayerName(){ return (document.getElementById('playerNameInput').value || '').trim().slice(0,14); }
+(function initPlayerName(){
+  const saved = localStorage.getItem(PLAYER_NAME_KEY);
+  if(saved) document.getElementById('playerNameInput').value = saved;
+})();
+document.getElementById('playerNameInput').addEventListener('input', ()=>{
+  localStorage.setItem(PLAYER_NAME_KEY, getPlayerName());
+});
+
+function computeScore(){
+  return kills*10 + mapIndex*500 + Math.floor(wave)*50;
+}
+function submitScore(){
+  const name = getPlayerName() || 'ANÓNIMO';
+  const score = computeScore();
+  const el = document.getElementById('endScoreSaved');
+  if(!recordsRef){ el.textContent = ''; return; }
+  el.textContent = 'Guardando récord...';
+  recordsRef.push({
+    name, score, kills, mapReached: mapIndex+1, wave, charName: selectedChar.name,
+    date: new Date().toISOString()
+  }).then(()=>{
+    el.textContent = '✅ Récord guardado — ' + score + ' pts';
+    renderLeaderboard('leaderboardEnd');
+  }).catch(()=>{ el.textContent = 'No se pudo guardar el récord (revisa tu conexión)'; });
+}
+function renderLeaderboard(containerId, limit){
+  const el = document.getElementById(containerId);
+  if(!recordsRef){
+    el.innerHTML = '<div class="lbTitle">🏆 TOP RÉCORD</div><div class="lbEmpty">El récord en línea aún no está conectado.</div>';
+    return;
+  }
+  el.innerHTML = '<div class="lbTitle">🏆 TOP RÉCORD</div><div class="lbEmpty">Cargando...</div>';
+  recordsRef.orderByChild('score').limitToLast(limit||10).once('value').then(snap=>{
+    const val = snap.val() || {};
+    const rows = Object.values(val).sort((a,b)=>b.score-a.score);
+    if(!rows.length){ el.innerHTML = '<div class="lbTitle">🏆 TOP RÉCORD</div><div class="lbEmpty">Todavía nadie tiene récord — ¡sé el primero!</div>'; return; }
+    el.innerHTML = '<div class="lbTitle">🏆 TOP RÉCORD</div>' + rows.map((r,i)=>
+      `<div class="lbRow"><span class="lbRank">${i+1}°</span><span class="lbName">${escapeHtmlLb(r.name)}</span><span class="lbScore">${r.score}</span></div>`
+    ).join('');
+  }).catch(()=>{ el.innerHTML = '<div class="lbTitle">🏆 TOP RÉCORD</div><div class="lbEmpty">No se pudo cargar el récord.</div>'; });
+}
+function escapeHtmlLb(s){ return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+document.getElementById('toggleLeaderboardStart').addEventListener('click', ()=>{
+  const box = document.getElementById('leaderboardStart');
+  const show = box.style.display==='none';
+  box.style.display = show ? 'block' : 'none';
+  document.getElementById('toggleLeaderboardStart').textContent = show ? '🏆 OCULTAR RÉCORD' : '🏆 VER RÉCORD';
+  if(show) renderLeaderboard('leaderboardStart');
+});
+
 // ---------- screen flow ----------
 function startGame(){
+  if(!getPlayerName()){
+    const input = document.getElementById('playerNameInput');
+    input.style.borderColor = '#ff5a5a';
+    input.placeholder = 'Escribe tu nombre o alias para jugar';
+    input.focus();
+    setTimeout(()=>{ input.style.borderColor = 'var(--gold)'; }, 1600);
+    return;
+  }
   document.getElementById('startScreen').style.display='none';
   document.getElementById('endScreen').style.display='none';
   document.getElementById('hud').style.display='flex';
@@ -1541,9 +1710,11 @@ function endGame(won, isFinal){
   document.getElementById('powerTimer').style.display='none';
   document.getElementById('endScreen').style.display='flex';
   document.getElementById('endTitle').textContent = isFinal ? '¡TECALITLÁN A SALVO!' : (won ? 'MAPA SUPERADO' : 'BASE DESTRUIDA');
-  document.getElementById('endStats').textContent = `Mapa: ${currentMap().name} · Oleada: ${wave} · Kills: ${kills}`;
+  document.getElementById('endStats').textContent = `Mapa: ${currentMap().name} · Oleada: ${wave} · Kills: ${kills} · Puntaje: ${computeScore()}`;
+  document.getElementById('endScoreSaved').textContent = '';
   GameAudio.sfx('gameover');
   GameAudio.scheduleLoop('menu');
+  submitScore();
 }
 function backToSelect(){
   document.getElementById('endScreen').style.display='none';
