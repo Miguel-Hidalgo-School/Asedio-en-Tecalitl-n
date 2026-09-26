@@ -238,17 +238,21 @@ const GameAudio = (function(){
   // de la música generada por código, tanto en el menú como en la partida.
   // Si el archivo no está (por ejemplo, todavía no lo subes al repositorio),
   // el juego sigue sonando con la música de código sin romperse.
+  // OJO: muchos navegadores de celular NO precargan el audio para ahorrar datos,
+  // así que no podemos esperar a un evento de "ya cargó" — hay que intentar
+  // reproducirlo de una vez (en el primer toque) y ver si de verdad arranca.
   const customMusic = new Audio('musica-fondo.mp3');
   customMusic.loop = true;
   customMusic.volume = 0.5;
-  customMusic.preload = 'auto';
-  let customMusicReady = false;
-  let customMusicFailed = false;
-  customMusic.addEventListener('canplaythrough', ()=>{
-    customMusicReady = true;
-    if(audioStarted) scheduleLoop(currentTrack||'menu'); // si ya estábamos sonando con la música de código, cambia a la real en cuanto está lista
-  }, {once:true});
-  customMusic.addEventListener('error', ()=>{ customMusicFailed = true; }, {once:true});
+  let customMusicState = 'unknown'; // 'unknown' | 'ready' | 'failed'
+
+  function tryCustomMusic(){
+    if(customMusicState==='failed') return Promise.resolve(false);
+    const p = customMusic.play();
+    if(!p || typeof p.then!=='function') return Promise.resolve(true); // navegadores viejos sin promesa: asumimos que sí
+    return p.then(()=>{ customMusicState='ready'; return true; })
+            .catch(()=>{ customMusicState='failed'; return false; });
+  }
 
   function ensureCtx(){
     if(!ctx){
@@ -294,17 +298,19 @@ const GameAudio = (function(){
 
   function scheduleLoop(mode){
     ensureCtx();
-    // Si la banda sonora real ya está lista (o todavía no sabemos si falló), la dejamos
-    // sonando de corrido en vez de la música de código — es un solo tema para todo el juego.
-    if(customMusicReady || (!customMusicFailed && customMusic.readyState>=3)){
+    currentTrack = mode;
+    if(customMusicState==='ready'){
+      // ya confirmamos que la banda sonora real funciona: se queda sonando de corrido
       stopMusic();
-      currentTrack = mode;
       customMusic.muted = muted;
       if(customMusic.paused) customMusic.play().catch(()=>{});
       return;
     }
+    if(customMusicState==='unknown'){
+      // primer intento real: si arranca, cortamos la música de código; si falla, seguimos con ella
+      tryCustomMusic().then(ok=>{ if(ok){ stopMusic(); customMusic.muted = muted; } });
+    }
     stopMusic();
-    currentTrack = mode;
     const loopBpm = mode==='game' ? bpm*1.12 : bpm*0.88; // partida: más urgente; menú: más relajado
     const stepDur = 60/loopBpm/2;
     const lead = mode==='game' ? LEAD_GAME : LEAD_MENU;
