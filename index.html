@@ -234,6 +234,22 @@ const GameAudio = (function(){
   let step = 0;
   const bpm = 96;
 
+  // Banda sonora real del usuario (opcional): si el archivo existe, se usa en vez
+  // de la música generada por código, tanto en el menú como en la partida.
+  // Si el archivo no está (por ejemplo, todavía no lo subes al repositorio),
+  // el juego sigue sonando con la música de código sin romperse.
+  const customMusic = new Audio('musica-fondo.mp3');
+  customMusic.loop = true;
+  customMusic.volume = 0.5;
+  customMusic.preload = 'auto';
+  let customMusicReady = false;
+  let customMusicFailed = false;
+  customMusic.addEventListener('canplaythrough', ()=>{
+    customMusicReady = true;
+    if(audioStarted) scheduleLoop(currentTrack||'menu'); // si ya estábamos sonando con la música de código, cambia a la real en cuanto está lista
+  }, {once:true});
+  customMusic.addEventListener('error', ()=>{ customMusicFailed = true; }, {once:true});
+
   function ensureCtx(){
     if(!ctx){
       ctx = new (window.AudioContext||window.webkitAudioContext)();
@@ -278,6 +294,15 @@ const GameAudio = (function(){
 
   function scheduleLoop(mode){
     ensureCtx();
+    // Si la banda sonora real ya está lista (o todavía no sabemos si falló), la dejamos
+    // sonando de corrido en vez de la música de código — es un solo tema para todo el juego.
+    if(customMusicReady || (!customMusicFailed && customMusic.readyState>=3)){
+      stopMusic();
+      currentTrack = mode;
+      customMusic.muted = muted;
+      if(customMusic.paused) customMusic.play().catch(()=>{});
+      return;
+    }
     stopMusic();
     currentTrack = mode;
     const loopBpm = mode==='game' ? bpm*1.12 : bpm*0.88; // partida: más urgente; menú: más relajado
@@ -361,6 +386,7 @@ const GameAudio = (function(){
     muted = v;
     if(musicGain) musicGain.gain.value = muted?0:0.32;
     if(sfxGain) sfxGain.gain.value = muted?0:0.5;
+    customMusic.muted = muted;
   }
   function toggleMute(){ setMuted(!muted); return muted; }
   function isMuted(){ return muted; }
