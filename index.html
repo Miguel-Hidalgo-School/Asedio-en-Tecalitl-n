@@ -246,13 +246,29 @@ const GameAudio = (function(){
   customMusic.volume = 0.5;
   let customMusicState = 'unknown'; // 'unknown' | 'ready' | 'failed'
 
+  // Motivo del último fallo (solo para diagnóstico: abre el juego con ?debug al final del link)
+  let customMusicReason = '';
   function tryCustomMusic(){
     if(customMusicState==='failed') return Promise.resolve(false);
     const p = customMusic.play();
     if(!p || typeof p.then!=='function') return Promise.resolve(true); // navegadores viejos sin promesa: asumimos que sí
     return p.then(()=>{ customMusicState='ready'; return true; })
-            .catch(()=>{ customMusicState='failed'; return false; });
+            .catch(err=>{
+              customMusicReason = (err && err.name) ? err.name : 'desconocido';
+              // OJO: si el navegador solo rechazó porque aún no había un toque "válido",
+              // NO es un fallo definitivo — se vuelve a intentar en el siguiente toque.
+              if(err && err.name==='NotAllowedError'){ return false; }
+              customMusicState='failed';
+              if(/debug/.test(location.search)) alert('Música personalizada no disponible: ' + customMusicReason);
+              return false;
+            });
   }
+  // Reintento en cada toque real mientras todavía no sepamos si la música personalizada sirve
+  function retryCustomMusic(){
+    if(customMusicState!=='unknown' || !ctx) return;
+    tryCustomMusic().then(ok=>{ if(ok){ stopMusic(); customMusic.muted = muted; } });
+  }
+  ['pointerup','click','touchend'].forEach(ev=>window.addEventListener(ev, retryCustomMusic, {passive:true}));
 
   function ensureCtx(){
     if(!ctx){
