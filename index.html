@@ -84,8 +84,11 @@
   .leaderboardBox .lbName{flex:1; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .leaderboardBox .lbEmpty{color:rgba(247,241,230,0.6); font-size:13px; padding:6px 0;}
   .leaderboardBoxBig{width:720px; max-width:97vw; max-height:460px; overflow-y:auto; border-width:2.5px; box-shadow:0 0 22px rgba(255,182,39,0.25); margin:16px 0 4px;}
-  .leaderboardBoxBig .lbTitle{font-size:16px; margin-bottom:8px; text-align:center;}
-  .leaderboardBoxBig .lbRow{font-size:15px; padding:5px 2px;}
+  .leaderboardBoxBig{min-height:112px; padding:14px 18px;}
+  .leaderboardBoxBig .lbTitle{font-size:18px; line-height:1.4; min-height:36px; padding:4px 2px 6px; margin:0 0 8px; display:flex; align-items:center; justify-content:center; text-align:center; overflow:visible;}
+  #leaderboardStart{flex:0 0 auto;}
+  .leaderboardBoxBig .lbEmpty{line-height:1.45; padding:8px 4px;}
+  .leaderboardBoxBig .lbRow{font-size:15px; line-height:1.35; padding:6px 2px;}
   .leaderboardBoxBig .lbRank{width:26px; font-size:15px;}
   #endScreen h1{font-family:'Bebas Neue'; font-size:min(12vw,60px); color:var(--gold);}
   #endStats{color:var(--paper); font-size:16px; margin:10px 0 24px;}
@@ -131,8 +134,6 @@
   .cover-zombie img{height:65px;width:100%;object-fit:contain;}
   .cover-bosses{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;overflow:auto;max-height:168px;}
   .cover-boss img{height:65px;max-width:100%;object-fit:contain;}
-  .cover-boss.priest-icon{font-size:10px;height:auto;justify-content:flex-start;color:inherit;background:rgba(255,255,255,.06);}
-  .cover-boss.priest-icon small{font:9px Rubik,sans-serif;color:#fff;}
   .cover-priest-note{font-size:11px;line-height:1.3;color:#e2d4c6;border-left:2px solid #c7a0dc;padding-left:8px;}
   .cover-bottom{border-top:1px solid rgba(255,255,255,.12);padding-top:8px;}
   .cover-legal,.cover-watermark-note{font-size:10px;opacity:.72;line-height:1.3;max-width:620px;}
@@ -226,29 +227,53 @@
 .cover-zombie,.cover-boss{min-width:0;background:#ffffff0d;border:1px solid #ffffff1a;border-radius:8px;padding:4px;display:flex;flex-direction:column;align-items:center;text-align:center;font:10px Rubik,sans-serif;line-height:1.12;}
 .cover-zombie img{height:62px;width:100%;object-fit:contain;}
 .cover-bosses{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(105px,100%),1fr));gap:8px;}
-.cover-boss img{height:clamp(84px,18vh,150px);width:100%;max-width:100%;object-fit:contain;}
+.cover-boss img{height:clamp(96px,18vh,150px);width:100%;max-width:100%;object-fit:contain;}
+.cover-boss{min-height:0;padding:6px;justify-content:flex-start;}
+.cover-boss-name{font:700 clamp(15px,3.8vw,19px)/1.08 Rubik,sans-serif;color:#fff;min-height:3.4em;display:flex;align-items:center;justify-content:center;text-wrap:balance;}
+.cover-boss-place{font:11px/1.2 Rubik,sans-serif;color:#8ce6ff;margin-top:auto;padding-top:5px;}
 #mapIntroSprite{display:block;width:min(36vw,150px);height:min(22vh,170px);object-fit:contain;margin:0 auto 7px;filter:drop-shadow(0 5px 9px #000);}
-@media(max-width:500px){.cover-art{object-position:center 42%;}.cover-heading h1{font-size:clamp(40px,12vw,56px)}.cover-zombie img{height:clamp(54px,10vh,82px)}.cover-boss img{height:clamp(84px,15vh,130px)}.bestiary-title{font-size:24px}}
+@media(max-width:500px){.cover-art{object-position:center 42%;}.cover-heading h1{font-size:clamp(40px,12vw,56px)}.cover-zombie img{height:clamp(54px,10vh,82px)}.cover-boss img{height:clamp(88px,15vh,130px)}.cover-boss{min-height:0}.cover-boss-name{font-size:15px;min-height:3.3em}.cover-boss-place{font-size:10px}.bestiary-title{font-size:24px}}
 @media (orientation:landscape){.cover-zombies{grid-template-columns:repeat(auto-fit,minmax(82px,1fr));}.cover-bosses{grid-template-columns:repeat(auto-fit,minmax(120px,1fr));}.cover-boss img{height:clamp(76px,28vh,132px)}.cover-characters{grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));}}
 
 
 .cover-browse-row{display:flex;justify-content:center;gap:9px;flex-wrap:wrap;width:min(360px,94vw);}
 .cover-browse-row .cover-gallery-btn{flex:1;min-width:128px;min-height:36px;background:rgba(32,17,45,.9);}
+/* Every hero gets the same two-form showcase; no character is featured over the others. */
 .cover-character-card{width:100%;}
-.cover-characters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
-.cover-character{min-width:0;min-height:130px;padding:8px;border-radius:10px;background:#ffffff0d;border:1px solid #ffffff20;display:grid;grid-template-columns:58px 1fr;gap:8px;align-items:center;}
-.cover-character img,.cover-character-mark{width:58px;height:78px;object-fit:contain;border-radius:8px;}
-.cover-character-mark{display:grid;place-items:center;background:radial-gradient(circle at 40% 30%,var(--hero-color,#8f55c8),#17111f 80%);font:26px 'Bebas Neue',sans-serif;color:#fff;text-shadow:0 2px 7px #000;}
-.cover-character h3{font:18px 'Bebas Neue',sans-serif;color:#ffb627;margin:0 0 4px;}
-.cover-character p{font:10px Rubik,sans-serif;line-height:1.3;margin:0;color:#eee;opacity:.88;}
-.cover-character.mixcoatl-character{grid-template-columns:1fr;align-items:start;}
-.mixcoatl-forms{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%;}
-.mixcoatl-form{min-width:0;margin:0;padding:5px;border-radius:8px;background:#ffffff0b;border:1px solid #ffffff20;text-align:center;}
-.mixcoatl-form img{display:block;width:100%;height:clamp(112px,24vh,210px);object-fit:contain;background:#d80bc7;border-radius:6px;}
-.mixcoatl-form figcaption{font:12px 'Bebas Neue',sans-serif;letter-spacing:1px;color:#ffb627;padding:4px 0 0;}
-.mixcoatl-character h3,.mixcoatl-character p{text-align:center;}
-@media (orientation:landscape){.mixcoatl-form img{height:clamp(88px,33vh,176px)}}
+.cover-characters{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:12px;}
+.cover-character{min-width:0;padding:10px;border-radius:12px;background:#ffffff0d;border:1px solid #ffffff20;display:flex;flex-direction:column;gap:8px;}
+.cover-character h3{font:22px 'Bebas Neue',sans-serif;color:#ffb627;margin:0;text-align:center;letter-spacing:.5px;}
+.cover-character p{font:12px/1.35 Rubik,sans-serif;margin:0;color:#eee;opacity:.9;text-align:center;}
+.cover-character-forms{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%;}
+.cover-character-form{min-width:0;margin:0;padding:6px;border-radius:9px;background:#ffffff0b;border:1px solid #ffffff20;text-align:center;}
+.cover-character-form canvas{display:block;width:100%;height:clamp(145px,24vh,205px);object-fit:contain;border-radius:6px;background:radial-gradient(ellipse at 50% 80%,#50345f,#17111f 76%);}
+.cover-character-form figcaption{font:700 15px/1.15 Rubik,sans-serif;letter-spacing:.5px;color:#ffcf60;padding:7px 2px 3px;min-height:2.4em;display:grid;place-items:center;}
+@media(max-width:500px){.cover-characters{grid-template-columns:1fr;gap:10px}.cover-character{padding:8px}.cover-character-form canvas{height:clamp(132px,22vh,176px)}}
+@media(max-height:590px){.cover-character-form canvas{height:clamp(105px,33vh,150px)}}
 @media(max-height:590px){.cover-actions{gap:5px;bottom:max(8px,env(safe-area-inset-bottom));}.cover-credit{font-size:12px}.cover-enter{padding:11px 20px;font-size:21px}.cover-browse-row .cover-gallery-btn{min-height:31px;padding:5px 10px;}}
+
+/* Full-viewport archive: five regular zombies above a balanced 3×3 boss grid. */
+#coverBestiaryPanel .bestiary-card,#coverCharactersPanel .bestiary-card{display:flex;flex-direction:column;}
+#coverBestiaryPanel .bestiary-title,#coverCharactersPanel .bestiary-title{flex:0 0 auto;}
+#coverBestiaryPanel .bestiary-caption,#coverCharactersPanel .bestiary-caption{flex:0 0 auto;font-size:14px;margin:8px 0;}
+#coverBestiaryPanel .cover-zombies{flex:0 0 auto;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;}
+#coverBestiaryPanel .cover-zombie{min-height:0;padding:5px;font-size:12px;}
+#coverBestiaryPanel .cover-zombie img{height:clamp(62px,10vh,100px);}
+#coverBestiaryPanel .cover-bosses{flex:1 1 0;min-height:0;max-height:none;overflow:visible;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:8px;}
+#coverBestiaryPanel .cover-boss{min-height:0;padding:6px;justify-content:space-between;}
+#coverBestiaryPanel .cover-boss img{flex:1 1 0;height:0;min-height:0;width:100%;}
+#coverBestiaryPanel .cover-boss-name{font-size:clamp(14px,3.4vw,18px);min-height:2.8em;}
+#coverBestiaryPanel .cover-boss-place{font-size:clamp(10px,2.6vw,12px);}
+#coverCharactersPanel .cover-characters{flex:1 1 0;min-height:0;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:8px;}
+#coverCharactersPanel .cover-character{min-height:0;padding:7px;gap:4px;}
+#coverCharactersPanel .cover-character h3{font-size:20px;}
+#coverCharactersPanel .cover-character p{font-size:clamp(10px,2.5vw,12px);line-height:1.2;}
+#coverCharactersPanel .cover-character-forms{flex:1 1 0;min-height:0;gap:5px;}
+#coverCharactersPanel .cover-character-form{display:flex;flex-direction:column;min-height:0;padding:4px;}
+#coverCharactersPanel .cover-character-form canvas{flex:1 1 0;height:0;min-height:0;width:100%;}
+#coverCharactersPanel .cover-character-form figcaption{flex:0 0 auto;font-size:clamp(11px,2.9vw,14px);min-height:2em;padding:4px 1px;}
+@media (orientation:landscape){#coverCharactersPanel .cover-characters{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));}#coverBestiaryPanel .cover-zombie img{height:clamp(46px,9vh,76px);}}
+@media(max-height:650px){#coverBestiaryPanel .bestiary-card,#coverCharactersPanel .bestiary-card{overflow-y:auto;}#coverBestiaryPanel .cover-bosses,#coverCharactersPanel .cover-characters{flex-shrink:0;}}
 
 </style>
 </head>
@@ -3581,7 +3606,7 @@ document.getElementById('muteBtnStart').addEventListener('click', onMuteClick);
 
 
 // Portada única. El archivo de amenazas usa sprites que ya están integrados en el juego.
-function coverImgCard(src,label,extra){const d=document.createElement('div');d.className='cover-boss '+(extra||'');const im=document.createElement('img');im.src=src;im.alt=label;const t=document.createElement('span');t.textContent=label;d.append(im,t);return d;}
+function coverImgCard(src,label,place){const d=document.createElement('div');d.className='cover-boss';const im=document.createElement('img');im.src=src;im.alt=label;const t=document.createElement('strong');t.className='cover-boss-name';t.textContent=label;const where=document.createElement('span');where.className='cover-boss-place';where.textContent=place;d.append(im,t,where);return d;}
 function coverPriestSprite(view){
   const c=document.createElement('canvas');c.width=128;c.height=150;const off=c.getContext('2d'),saved=ctx;
   ctx=off;ctx.translate(64,105);drawPriestBossSprite(view||'front',false,false);ctx=saved;return c.toDataURL('image/png');
@@ -3599,20 +3624,43 @@ function renderCoverBestiary(){
  const zb=document.getElementById('coverZombies');zb.innerHTML='';
  ZOMBIE_TYPE_KEYS.forEach(k=>{const d=document.createElement('div');d.className='cover-zombie';const im=document.createElement('img');im.src=ZOMBIE_SPRITES[k].front.img.src;im.alt=ZOMBIE_TYPE_LABELS[k];const cap=document.createElement('span');cap.textContent=ZOMBIE_TYPE_LABELS[k].replace('Zombie ','');d.append(im,cap);zb.appendChild(d);});
  const bb=document.getElementById('coverBosses');bb.innerHTML='';
- MAPS.forEach(m=>{const isPriest=isPurisimaMap(m);const src=coverBossSource(m);const d=coverImgCard(src,m.bossName,isPriest?'priest-icon':'');bb.appendChild(d);});
+ MAPS.forEach(m=>{const src=coverBossSource(m);bb.appendChild(coverImgCard(src,m.bossName,m.name));});
 }
 renderCoverBestiary();
+function gallerySpriteImages(c){
+ if(c.id==='mixcoatl')return [mixcoatlBaseRefImg,mixcoatlSuperRefImg];
+ const base=c.id==='xolotl'?XOLOTL_SPRITES.front.img:c.id==='tonatiuh'?TONATIUH_SPRITES.side1.img:c.id==='metralla'?M_IMG.b.front:c.id==='torbellino'?TORBELLINO_SPRITES.front.img:TEPOZTLI_SPRITES.front.img;
+ const sup=SUPER_CONFIG[c.id]&&SUPER_CONFIG[c.id].img;
+ return [base,sup].filter(Boolean);
+}
+function drawGalleryFigure(canvasEl,c,transformed){
+ const gctx=canvasEl.getContext('2d');gctx.clearRect(0,0,canvasEl.width,canvasEl.height);
+ const saved={ctx,selectedChar,superActive,playerMoving,playerFiring,playerAngle:player.angle,playerX:player.x,playerY:player.y,hasRifle,playerMoveAngle};
+ try{
+  ctx=gctx;ctx.save();ctx.scale(3,3);
+  selectedChar=c;superActive=!!transformed;playerMoving=false;playerFiring=false;hasRifle=false;
+  player.angle=Math.PI/2;playerMoveAngle=Math.PI/2;player.x=canvasEl.width/6;player.y=canvasEl.height/3-32;
+  drawPlayerBase();ctx.restore();
+ }catch(err){try{ctx.restore();}catch(_){} }
+ finally{ctx=saved.ctx;selectedChar=saved.selectedChar;superActive=saved.superActive;playerMoving=saved.playerMoving;playerFiring=saved.playerFiring;player.angle=saved.playerAngle;player.x=saved.playerX;player.y=saved.playerY;hasRifle=saved.hasRifle;playerMoveAngle=saved.playerMoveAngle;}
+}
 function renderCoverCharacters(){
- const box=document.getElementById('coverCharacters'); if(!box)return; box.innerHTML='';
+ const box=document.getElementById('coverCharacters');if(!box)return;box.innerHTML='';
  CHARACTERS.forEach(c=>{
-  const card=document.createElement('article'); card.className='cover-character'+(c.id==='mixcoatl'?' mixcoatl-character':'');
-  if(c.id==='mixcoatl'){
-   const forms=document.createElement('div');forms.className='mixcoatl-forms';
-   [['BASE',MIXCOATL_REF_BASE],['SÚPER',MIXCOATL_REF_SUPER]].forEach(([label,src])=>{const figure=document.createElement('figure');figure.className='mixcoatl-form';const im=document.createElement('img');im.src=src;im.alt=c.name+' · '+label.toLowerCase();const cap=document.createElement('figcaption');cap.textContent=label;figure.append(im,cap);forms.appendChild(figure);});
-   card.appendChild(forms);
-  } else if(c.art){const im=document.createElement('img');im.src=c.art;im.alt=c.name;card.appendChild(im);}
-  else {const mark=document.createElement('div');mark.className='cover-character-mark';mark.style.setProperty('--hero-color',c.color||'#8f55c8');mark.textContent=String(c.name||'?').slice(0,1);card.appendChild(mark);}
-  const copy=document.createElement('div');const h=document.createElement('h3');h.textContent=c.name;const p=document.createElement('p');p.textContent=c.power||'Guerrero de Tecalitlán';copy.append(h,p);card.appendChild(copy);box.appendChild(card);
+  const card=document.createElement('article');card.className='cover-character';
+  const h=document.createElement('h3');h.textContent=c.name;
+  const forms=document.createElement('div');forms.className='cover-character-forms';
+  const canvases=[];
+  [['BASE',false],['SÚPER / TRANSFORMACIÓN',true]].forEach(([label,transformed])=>{
+   const figure=document.createElement('figure');figure.className='cover-character-form';
+   const art=document.createElement('canvas');art.width=280;art.height=360;art.setAttribute('aria-label',c.name+' '+label.toLowerCase());
+   const cap=document.createElement('figcaption');cap.textContent=label;figure.append(art,cap);forms.appendChild(figure);canvases.push([art,transformed]);
+  });
+  const desc=document.createElement('p');desc.textContent=c.power||'Guerrero de Tecalitlán';
+  card.append(h,forms,desc);box.appendChild(card);
+  let attempts=0;
+  const paint=()=>{const images=gallerySpriteImages(c);if(images.length&&images.some(im=>!im.complete||!im.naturalWidth)&&attempts++<30){setTimeout(paint,180);return;}canvases.forEach(([art,form])=>drawGalleryFigure(art,c,form));};
+  paint();
  });
 }
 renderCoverCharacters();
