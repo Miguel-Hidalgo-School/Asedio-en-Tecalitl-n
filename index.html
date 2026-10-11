@@ -84,12 +84,14 @@
   .leaderboardBox .lbName{flex:1; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .leaderboardBox .lbEmpty{color:rgba(247,241,230,0.6); font-size:13px; padding:6px 0;}
   .leaderboardBoxBig{width:720px; max-width:97vw; max-height:460px; overflow-y:auto; border-width:2.5px; box-shadow:0 0 22px rgba(255,182,39,0.25); margin:16px 0 4px;}
-  .leaderboardBoxBig{min-height:112px; padding:14px 18px;}
-  .leaderboardBoxBig .lbTitle{font-size:18px; line-height:1.4; min-height:36px; padding:4px 2px 6px; margin:0 0 8px; display:flex; align-items:center; justify-content:center; text-align:center; overflow:visible;}
+  .leaderboardBoxBig{min-height:280px; max-height:min(52vh,520px); padding:14px 18px;}
+  .leaderboardBoxBig .lbTitle{font-size:22px; line-height:1.35; min-height:52px; padding:8px 4px; margin:0 0 10px; display:flex; align-items:center; justify-content:center; text-align:center; overflow:visible; white-space:normal;}
   #leaderboardStart{flex:0 0 auto;}
   .leaderboardBoxBig .lbEmpty{line-height:1.45; padding:8px 4px;}
-  .leaderboardBoxBig .lbRow{font-size:15px; line-height:1.35; padding:6px 2px;}
-  .leaderboardBoxBig .lbRank{width:26px; font-size:15px;}
+  .leaderboardBoxBig .lbRow{font-size:17px; line-height:1.45; padding:7px 4px; min-height:36px;}
+  .leaderboardBoxBig .lbRank{width:36px; font-size:17px; flex:0 0 36px;}
+  .leaderboardBoxBig .lbName{min-width:0;font-size:17px;}
+  .leaderboardBoxBig .lbScore{flex:0 0 auto;color:var(--gold);font-size:17px;font-variant-numeric:tabular-nums;white-space:nowrap;}
   #endScreen h1{font-family:'Bebas Neue'; font-size:min(12vw,60px); color:var(--gold);}
   #endStats{color:var(--paper); font-size:16px; margin:10px 0 24px;}
 
@@ -733,15 +735,6 @@ function renderCharBio(c){
 }
 renderCharPreview(selectedChar);
 renderCharBio(selectedChar);
-// Botón de pantalla completa como una tarjeta más de la cuadrícula (junto a Tepoztli),
-// así siempre queda visible y fácil de tocar en Android.
-const fsCard = document.createElement('button');
-fsCard.id = 'fsBtnStart';
-fsCard.className = 'charCard';
-fsCard.style.cssText = 'background:rgba(46,196,182,0.2); border-color:var(--turquoise); color:var(--paper); cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; -webkit-appearance:none; appearance:none; font-family:inherit;';
-fsCard.innerHTML = `<div style="font-size:28px; margin-bottom:6px;">⛶</div><div class="charName" style="font-size:13px;">PANTALLA<br>COMPLETA</div>`;
-charSelectEl.appendChild(fsCard);
-
 // ---------- mapas ----------
 const MAPS = [
   {name:'Cerro de la Cruz', ground:'#4a4030', accent:'#c9c9c9', bossName:'El Salvaje de la Cruz', ability:'charge', structure:'cima', label:'LA CRUZ DEL CERRO', photo:'mapa9-cerrodelacruz.jpg', useSprite:true},
@@ -1680,7 +1673,7 @@ function update(dt){
       const m = currentMap();
       const finalMap = mapIndex >= MAPS.length-1;
       const advance = ()=>{
-        if(finalMap){ endGame(true,true); return; } else { mapIndex++; }
+        if(finalMap){ mapIndex=0; } else { mapIndex++; }
         wave=1; zombies=[]; bullets=[]; particles=[]; pickups=[]; npcs=[]; fallenBossFx=null;
         waveInProgress=false; zombiesToSpawn=0; spawnTimer=0; bossActive=false; boss=null;
         playerHP=playerMaxHP; ammo=maxAmmo; hasRifle=false;
@@ -1694,9 +1687,17 @@ function update(dt){
         if(state==='playing') showMapIntro(startWave);
       };
       if(MP.on){
-        if(finalMap){ setTimeout(()=>{ if(state==='playing') endGame(true,true); },1800); } else { showBanner('¡' + m.name.toUpperCase() + ' SUPERADO!', 'Avanzando al siguiente mapa'); setTimeout(()=>{ if(state==='playing') advance(); },2200); }
+        if(finalMap){
+          loopCount++;
+          showBanner('¡SANTIAGO SUPERADO!', 'Ronda completada · la campaña continúa');
+          setTimeout(()=>{ if(state==='playing') advance(); },2200);
+        } else { showBanner('¡' + m.name.toUpperCase() + ' SUPERADO!', 'Avanzando al siguiente mapa'); setTimeout(()=>{ if(state==='playing') advance(); },2200); }
       } else {
-        if(finalMap){ showBanner('¡SANTIAGO SUPERADO!', 'El Patrón cae · campaña completada'); setTimeout(()=>{ if(state==='playing') endGame(true,true); },1800); } else { showBanner('¡' + m.name.toUpperCase() + ' SUPERADO!', 'Derrotaste al jefe'); setTimeout(()=>{ if(state==='playing') pzMapComplete(advance); },1100); }
+        if(finalMap){
+          loopCount++;
+          showBanner('¡SANTIAGO SUPERADO!', 'El Patrón cae · elige continuar o terminar');
+          setTimeout(()=>{ if(state==='playing') pzWin(advance); },1100);
+        } else { showBanner('¡' + m.name.toUpperCase() + ' SUPERADO!', 'Derrotaste al jefe'); setTimeout(()=>{ if(state==='playing') pzMapComplete(advance); },1100); }
       }
     }
   }
@@ -3213,15 +3214,21 @@ function pzMapComplete(cont){
   const nextName = mapIndex>=MAPS.length-1 ? ('Mapa 1 · nueva ronda ' + (loopCount+2)) : ('Mapa ' + (mapIndex+2) + ' · ' + MAPS[mapIndex+1].name);
   pzEl('pzCharacterPicker').style.display='block';
   pzEl('pzCharSelect').value=selectedChar.id;
-  pzEl('pzEnd').textContent='🏁 FINALIZAR PARTIDA';
+  pzEl('pzEnd').textContent='⏹ TERMINAR';
   pzOpen('¡MAPA SUPERADO!', currentMap().name + ' completado. Siguiente: ' + nextName + '. Puedes cambiar de personaje antes de continuar.', '▶ CONTINUAR');
 }
 function pzWin(cont){
   paused = true; pzMode = 'win'; pzCont = cont; pzLeft = 20;
-  pzOpen('¡HAS SALVADO A TECALITLÁN!', 'El Patrón cayó. La campaña está completa.', '▶ CONTINUAR');
-  const tick = ()=>{ pzEl('pzCount').textContent = pzLeft; pzEl('pzGo').textContent = '▶ CONTINUAR (' + pzLeft + ')'; };
+  pzEl('pzCharacterPicker').style.display='none';
+  pzEl('pzEnd').textContent='⏹ TERMINAR';
+  pzOpen('¡SANTIAGO SUPERADO!', 'Ronda ' + loopCount + ' completada. Elige CONTINUAR para seguir la campaña sin fin o TERMINAR para ver el resumen.', '▶ CONTINUAR');
+  const tick = ()=>{ pzEl('pzCount').textContent = 'ELIGE · ' + pzLeft + ' s'; };
   tick(); clearInterval(pzTimer);
-  pzTimer = setInterval(()=>{ pzLeft--; if(pzLeft<=0){ pzContinue(); return; } tick(); }, 1000);
+  pzTimer = setInterval(()=>{
+    if(pzMode!=='win'){ clearInterval(pzTimer); pzTimer=null; return; }
+    pzLeft=Math.max(0,pzLeft-1); tick();
+    if(pzLeft===0){ clearInterval(pzTimer); pzTimer=setTimeout(()=>{ if(pzMode==='win') pzContinue(); },750); }
+  },1000);
 }
 function pzContinue(){
   if(pzMode==='pause'){ pzHide(); return; }
@@ -3280,10 +3287,7 @@ const GAME_FIREBASE_CONFIG = {
   appId: "1:388006729459:web:b0da0e1ff430df4b468986"
 };
 let recordsRef = null;
-try{
-  firebase.initializeApp(GAME_FIREBASE_CONFIG);
-  recordsRef = firebase.database().ref('records');
-}catch(e){ console.warn('Firebase del récord no configurado todavía', e); }
+let gameFirebasePromise = null;
 
 const PLAYER_NAME_KEY = 'asedioTecalitlanPlayerName';
 function getPlayerName(){ return (document.getElementById('playerNameInput').value || '').trim().slice(0,14) || 'ANÓNIMO'; }
@@ -3314,19 +3318,20 @@ function submitScore(){
 }
 function renderLeaderboard(containerId, limit){
   const el = document.getElementById(containerId);
-  if(!recordsRef){
-    el.innerHTML = '<div class="lbTitle">🏆 TOP RÉCORD</div><div class="lbEmpty">El récord en línea aún no está conectado.</div>';
-    return;
-  }
-  el.innerHTML = '<div class="lbTitle">🏆 TOP RÉCORD</div><div class="lbEmpty">Cargando...</div>';
-  recordsRef.orderByChild('score').limitToLast(limit||100).once('value').then(snap=>{
+  if(!el) return;
+  const title = '<div class="lbTitle">🏆 TOP RÉCORD</div>';
+  el.innerHTML = title + '<div class="lbEmpty" role="status">Conectando y cargando el TOP 100…</div>';
+  ensureGameFirebase().then(()=>{
+    if(!recordsRef) throw new Error('Firebase Database unavailable');
+    return recordsRef.orderByChild('score').limitToLast(100).once('value');
+  }).then(snap=>{
     const val = snap.val() || {};
-    const rows = Object.values(val).sort((a,b)=>b.score-a.score);
-    if(!rows.length){ el.innerHTML = '<div class="lbTitle">🏆 TOP RÉCORD</div><div class="lbEmpty">Todavía nadie tiene récord — ¡sé el primero!</div>'; return; }
-    el.innerHTML = '<div class="lbTitle">🏆 TOP RÉCORD</div>' + rows.map((r,i)=>
-      `<div class="lbRow"><span class="lbRank">${i+1}°</span><span class="lbName">${escapeHtmlLb(r.name)}</span><span class="lbScore">${r.score}</span></div>`
+    const rows = Object.values(val).sort((a,b)=>Number(b.score||0)-Number(a.score||0));
+    if(!rows.length){ el.innerHTML = title + '<div class="lbEmpty">Todavía nadie tiene récord — ¡sé el primero!</div>'; return; }
+    el.innerHTML = title + rows.map((r,i)=>
+      `<div class="lbRow"><span class="lbRank">${i+1}°</span><span class="lbName">${escapeHtmlLb(r.name)}</span><span class="lbScore">${Number(r.score||0).toLocaleString('es-MX')}</span></div>`
     ).join('');
-  }).catch(()=>{ el.innerHTML = '<div class="lbTitle">🏆 TOP RÉCORD</div><div class="lbEmpty">No se pudo cargar el récord.</div>'; });
+  }).catch(()=>{ el.innerHTML = title + '<div class="lbEmpty" role="alert">No se pudo conectar o cargar el récord en línea.</div>'; });
 }
 function escapeHtmlLb(s){ return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
@@ -3433,7 +3438,7 @@ function mpEnter(){
 }
 function mpStart(){
   MP.on=true; MP.client=!MP.host; mpEl('mpOverlay').style.display='none'; document.getElementById('voiceHud').style.display='flex';
-  tryLockLandscape(); startGame();
+  startGame();
   MP.timer=setInterval(mpTick,110);
 }
 function mpTick(){
@@ -3544,6 +3549,7 @@ mpEl('mpClose').onclick = ()=>{ if(MP.code && !MP.on) mpLeave(); mpEl('mpOverlay
 
 // ---------- screen flow ----------
 function startGame(){
+  tryLockLandscape();
   document.getElementById('startScreen').style.display='none';
   document.getElementById('endScreen').style.display='none';
   document.getElementById('hud').style.display='flex';
@@ -3584,10 +3590,9 @@ function backToSelect(){
 }
 loadStartBgPhoto();
 
-document.getElementById('playBtn').addEventListener('click', ()=>{ tryLockLandscape(); startGame(); });
+document.getElementById('playBtn').addEventListener('click', startGame);
 document.getElementById('retryBtn').addEventListener('click', startGame);
 document.getElementById('fsBtn').addEventListener('click', tryLockLandscape);
-document.getElementById('fsBtnStart').addEventListener('click', tryLockLandscape);
 document.getElementById('backToSelectBtn').addEventListener('click', backToSelect);
 
 function syncMuteButtons(){
@@ -3675,7 +3680,7 @@ document.getElementById('coverCharactersOpen').addEventListener('click',()=>open
 document.getElementById('coverCharactersClose').addEventListener('click',closeCoverPanels);
 coverCharactersPanel.addEventListener('click',e=>{if(e.target===coverCharactersPanel)closeCoverPanels();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&(coverPanel.classList.contains('active')||coverCharactersPanel.classList.contains('active')))closeCoverPanels();});
-document.getElementById('coverEnter').addEventListener('click',()=>{tryLockLandscape();closeCoverPanels();document.getElementById('coverScreen').style.display='none';document.getElementById('startScreen').style.display='flex';});
+document.getElementById('coverEnter').addEventListener('click',()=>{closeCoverPanels();document.getElementById('coverScreen').style.display='none';document.getElementById('startScreen').style.display='flex';});
 
 // Voice media/signaling through Metered Realtime; Firebase remains unchanged for rooms and gameplay state.
 const VOICE={stream:null,peer:null,enabled:false,talking:false,speakerOn:true,remoteAudios:[]};
@@ -3714,7 +3719,6 @@ const voiceToggle=document.getElementById('voicePTT');if(voiceToggle){voiceToggl
 const speakerToggle=document.getElementById('voiceSpeaker');if(speakerToggle)speakerToggle.addEventListener('click',()=>{VOICE.speakerOn=!VOICE.speakerOn;VOICE.remoteAudios.forEach(a=>{a.muted=!VOICE.speakerOn;if(VOICE.speakerOn){try{const p=a.play();if(p&&p.catch)p.catch(()=>{});}catch(_){}}});voiceStatus(VOICE.speakerOn?'Bocina encendida; el micrófono mantiene su estado.':'Bocina silenciada; el micrófono mantiene su estado.');});
 
 // Firebase is fetched only when the user opens online play; file:// single-player has no network dependency.
-let gameFirebasePromise=null;
 function ensureGameFirebase(){
  if(recordsRef&&window.firebase&&firebase.database)return Promise.resolve(true);
  if(gameFirebasePromise)return gameFirebasePromise;
