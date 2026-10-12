@@ -105,11 +105,13 @@
   .touchAction{position:absolute;right:max(14px,env(safe-area-inset-right));width:62px;height:54px;border-radius:15px;display:flex;align-items:center;justify-content:center;text-align:center;pointer-events:auto;z-index:10;touch-action:none;color:var(--paper);font:700 13px 'Bebas Neue';letter-spacing:.4px;box-shadow:0 3px 10px #0008;}
   #powerBtn{bottom:max(140px,calc(env(safe-area-inset-bottom) + 138px));background:rgba(46,196,182,.4);border:2px solid var(--turquoise);}
   #reloadBtn{bottom:max(78px,calc(env(safe-area-inset-bottom) + 76px));background:rgba(106,5,114,.72);border:2px solid #c878e0;}
-  #fireBtn{bottom:max(14px,env(safe-area-inset-bottom));width:72px;height:58px;border-radius:18px;background:rgba(255,107,53,.72);border:2px solid var(--gold);font-size:16px;}
-  #fireBtn.active{background:rgba(255,182,39,.92);color:#241326;transform:scale(.96);}
   #weaponStatus{font:600 11px Rubik,sans-serif;color:var(--paper);opacity:.9;margin-top:3px;white-space:nowrap;}
+  #actionToast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 118px);transform:translateX(-50%);z-index:18;display:none;max-width:90vw;padding:9px 15px;border:2px solid var(--gold);border-radius:11px;background:rgba(26,20,35,.94);color:var(--paper);font:700 14px Rubik,sans-serif;text-align:center;box-shadow:0 4px 16px #0009;pointer-events:none;}
+  #actionToast.active{display:block;animation:coachPop .18s ease;}
+  #reloadBtn.reloading{opacity:1!important;animation:reloadPulse .65s ease-in-out infinite alternate;}
+  @keyframes reloadPulse{from{filter:brightness(.9);box-shadow:0 0 5px #c878e0}to{filter:brightness(1.6);box-shadow:0 0 15px #e0a8ff}}
   #victoryPoseCanvas{display:block;width:min(640px,94vw);height:clamp(130px,24vh,225px);margin:2px auto 8px;border-radius:16px;background:radial-gradient(ellipse at 50% 90%,rgba(255,182,39,.25),rgba(26,20,35,.06) 70%);pointer-events:none;}
-  @media (orientation:landscape) and (max-height:450px){.touchAction{width:56px;height:48px}#fireBtn{width:64px;height:52px}#powerBtn{bottom:132px}#reloadBtn{bottom:73px}}
+  @media (orientation:landscape) and (max-height:450px){.touchAction{width:56px;height:48px}#powerBtn{bottom:132px}#reloadBtn{bottom:73px}}
 
 
   #coverScreen{position:fixed;inset:0;z-index:30;display:flex;overflow:auto;background:radial-gradient(ellipse at 20% 0%,#58244f 0%,#1a1423 65%);color:var(--paper);padding:clamp(10px,2vw,24px);}
@@ -293,6 +295,19 @@
 .xolotl-angle-card figcaption{font:700 11px/1.15 Rubik,sans-serif;color:#f3d68a;padding:5px 1px 2px;}
 @media(max-width:500px){.xolotl-angle-grid{grid-template-columns:repeat(3,minmax(0,1fr));}.xolotl-angle-card img{height:clamp(96px,15vh,132px);}}
 
+
+/* Keep hero cards and Xólotl's view strip inside the phone viewport. */
+@media(max-width:800px){
+ .cover-characters{grid-template-columns:minmax(0,1fr)!important;}
+ .cover-character{box-sizing:border-box;width:100%;min-width:0;position:relative;}
+ .cover-character-forms{grid-template-columns:repeat(2,minmax(0,1fr));width:100%;box-sizing:border-box;}
+ .cover-character-form{box-sizing:border-box;min-width:0;}
+ .xolotl-angle-gallery{display:block;position:relative;clear:both;width:100%;min-width:0;box-sizing:border-box;overflow:hidden;}
+ .xolotl-angle-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;width:100%;box-sizing:border-box;}
+ .xolotl-angle-card{min-width:0;box-sizing:border-box;overflow:hidden;}
+ .xolotl-angle-card img{display:block;width:100%;height:clamp(88px,14vh,126px);object-fit:contain;}
+}
+
 </style>
 </head>
 <body>
@@ -317,6 +332,7 @@
   <div id="superTimer"></div>
   <div id="waveBanner"></div>
   <div id="coachHint"></div>
+  <div id="actionToast" role="status" aria-live="polite"></div>
 
   <button id="pauseBtn" title="Pausa">⏸</button>
   <div id="voiceHud"><button id="voicePTT" aria-label="Micrófono apagado. Toca para activarlo." aria-pressed="false">🔇 MICRÓFONO OFF</button><button id="voiceSpeaker" aria-label="Bocina encendida. Toca para silenciarla." aria-pressed="true">🔊 BOCINA ON</button></div>
@@ -376,7 +392,6 @@
     </div>
     <button id="powerBtn" class="touchAction" type="button">PODER</button>
     <button id="reloadBtn" class="touchAction" type="button">RECARGA</button>
-    <button id="fireBtn" class="touchAction" type="button" aria-label="Disparo opcional; también dispara al apuntar con el stick derecho">FUEGO</button>
   </div>
 
   <div id="ctrlHint"></div>
@@ -456,7 +471,7 @@ if(window.visualViewport){ window.visualViewport.addEventListener('resize', resi
 
 const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 document.getElementById('ctrlHint').textContent = isTouch
-  ? 'Joystick izq: moverte · Joystick der: apuntar y disparar en continuo · FUEGO opcional · Botón: poder'
+  ? 'Joystick izq: moverte · Joystick der: apuntar y disparar en continuo · Botón: poder'
   : 'WASD: moverte · Ratón: apuntar y disparar · Barra espaciadora: poder';
 
 // ---------- audio (música y efectos generados por código, 100% original) ----------
@@ -1056,13 +1071,9 @@ if(isTouch){
     },
     ()=>{ aimActive=false; }
   );
-  const powerBtn=document.getElementById('powerBtn'), reloadBtn=document.getElementById('reloadBtn'), fireBtn=document.getElementById('fireBtn');
+  const powerBtn=document.getElementById('powerBtn'), reloadBtn=document.getElementById('reloadBtn');
   powerBtn.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();activatePower();});
   reloadBtn.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();reloadWeapon();});
-  const releaseFire=()=>{touchFireHeld=false;fireBtn.classList.remove('active');};
-  fireBtn.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();touchFireHeld=true;fireBtn.classList.add('active');fireBtn.setPointerCapture?.(e.pointerId);});
-  ['pointerup','pointercancel','lostpointercapture'].forEach(type=>fireBtn.addEventListener(type,e=>{e.preventDefault();releaseFire();}));
-  fireBtn.addEventListener('contextmenu',e=>e.preventDefault());
 }
 
 // ---------- orientation lock (mobile) ----------
@@ -1213,7 +1224,10 @@ function spawnBoss(){
 
 // ---------- wave management ----------
 const WAVES_BEFORE_BOSS = 4;
+function hasWaveAuthority(){ return !MP.on || MP.host; }
 function startWave(){
+  // Only the host owns shared waves; a stale client flag must never block solo gameplay.
+  if(!hasWaveAuthority() || waveInProgress || bossActive) return;
   waveInProgress = true;
   if(wave <= WAVES_BEFORE_BOSS){
     zombiesToSpawn = 5 + wave*3 + loopCount*6;
@@ -1231,7 +1245,9 @@ function showMapIntro(afterCb){
   document.getElementById('mapIntroLabel').textContent = 'Mapa ' + (mapIndex+1) + ' de ' + MAPS.length;
   document.getElementById('mapIntroName').textContent = m.name;
   document.getElementById('mapIntroBoss').textContent = 'Jefe: ' + m.bossName;
-  const introSprite=document.getElementById('mapIntroSprite');introSprite.src=coverBossSource(m);introSprite.style.display='block';
+  const introSprite=document.getElementById('mapIntroSprite');
+  introSprite.onerror=null; introSprite.src=coverBossSource(m); introSprite.style.display='block';
+  if(m.name==='Acueducto') introSprite.onerror=()=>{introSprite.onerror=null;introSprite.src=ahogadoPortraitData();};
   let shown = false;
   const reveal = ()=>{
     if(shown) return; shown = true;
@@ -1265,16 +1281,24 @@ function updateWeaponHud(){
   const el=document.getElementById('weaponStatus'); if(!el) return;
   const fireBtn=document.getElementById('fireBtn'),reloadBtn=document.getElementById('reloadBtn');
   if(fireBtn)fireBtn.textContent=(selectedChar.id==='mixcoatl'?'TAJO':selectedChar.id==='tepoztli'?'FAN':selectedChar.id==='metralla'?'RÁFAGA':'FUEGO');
-  if(reloadBtn)reloadBtn.style.opacity=(hasRifle&&selectedChar.id!=='mixcoatl'&&selectedChar.id!=='tepoztli')?'1':'.48';
+  if(reloadBtn){reloadBtn.style.opacity=(hasRifle&&selectedChar.id!=='mixcoatl'&&selectedChar.id!=='tepoztli')?'1':'.68';reloadBtn.classList.toggle('reloading',reloadTimer>0);reloadBtn.setAttribute('aria-label',reloadTimer>0?'Recargando arma':'Recargar arma');}
   if(selectedChar.id==='mixcoatl')el.textContent='ESPADA · TAJO DIRECCIONAL'+(fireCooldown>0?' · LISTA EN '+fireCooldown.toFixed(1)+' s':'');
   else if(selectedChar.id==='tepoztli')el.textContent='TAJO EN ABANICO'+(fireCooldown>0?' · LISTO EN '+fireCooldown.toFixed(1)+' s':'');
   else if(reloadTimer>0) el.textContent='RECARGANDO · '+Math.max(1,Math.ceil(reloadTimer*10)/10)+' s';
   else if(hasRifle) el.textContent=(selectedChar.id==='metralla'?'METRALLA · RÁFAGA ':'RIFLE · ')+ammo+'/'+maxAmmo+(fireCooldown>0?' · LISTO EN '+Math.max(0,fireCooldown).toFixed(1)+' s':'');
   else el.textContent=selectedChar.id==='metralla'?'METRALLA · RÁFAGA RÁPIDA':'PISTOLA · SEMIAUTOMÁTICA'+(fireCooldown>0?' · LISTA EN '+Math.max(0,fireCooldown).toFixed(1)+' s':'');
 }
+let actionToastTimer=null;
+function showActionToast(message){
+  const el=document.getElementById('actionToast'); if(!el) return;
+  el.textContent=message; el.classList.remove('active'); void el.offsetWidth; el.classList.add('active');
+  clearTimeout(actionToastTimer); actionToastTimer=setTimeout(()=>el.classList.remove('active'),1900);
+}
 function reloadWeapon(){
-  if(!hasRifle || reloadTimer>0 || ammo>=maxAmmo) return;
-  reloadTimer=1.05; touchFireHeld=false; GameAudio.sfx('pickup'); updateWeaponHud();
+  if(!hasRifle){ showActionToast('PISTOLA: munición ilimitada; no requiere recarga.'); GameAudio.sfx('pickup'); return; }
+  if(reloadTimer>0){ showActionToast('RECARGANDO · '+Math.max(1,Math.ceil(reloadTimer*10)/10)+' s'); updateWeaponHud(); return; }
+  if(ammo>=maxAmmo){ showActionToast('CARGADOR LLENO · '+ammo+'/'+maxAmmo); GameAudio.sfx('pickup'); return; }
+  reloadTimer=1.05; touchFireHeld=false; showActionToast('RECARGANDO · '+ammo+'/'+maxAmmo); GameAudio.sfx('pickup'); updateWeaponHud();
 }
 function performSignatureSlash(angle){
   const isMix=selectedChar.id==='mixcoatl', range=isMix?94:104, halfArc=isMix?.72:1.05, duration=isMix?.32:.38;
@@ -1515,7 +1539,7 @@ function update(dt){
   let firing = false;
   if(isTouch){
     if(aimActive) aimAngle = Math.atan2(aimVec.y, aimVec.x);
-    firing = touchFireHeld || aimActive;
+    firing = aimActive;
   } else {
     aimAngle = Math.atan2(mouse.y-player.y, mouse.x-player.x);
     firing = mouse.down;
@@ -1523,7 +1547,7 @@ function update(dt){
   if(MP.on && playerHP<=0) firing=false;
   player.angle = aimAngle; playerFiring = firing;
   fireCooldown = Math.max(0,fireCooldown-dt); weaponRecoil=Math.max(0,weaponRecoil-dt*4);
-  if(reloadTimer>0){ reloadTimer=Math.max(0,reloadTimer-dt); if(reloadTimer===0){ammo=maxAmmo;updateWeaponHud();} }
+  if(reloadTimer>0){ reloadTimer=Math.max(0,reloadTimer-dt); if(reloadTimer===0){ammo=maxAmmo;GameAudio.sfx('pickup');showActionToast('RECARGA COMPLETA · '+ammo+'/'+maxAmmo);updateWeaponHud();} }
   if(firing && fireCooldown<=0) shoot(aimAngle);
   if(!firing || fireCooldown>0) updateWeaponHud();
 
@@ -1625,7 +1649,7 @@ function update(dt){
     }
   }
 
-  if(!MP.client){
+  if(!MP.on || MP.host){
   // spawn logic
   if(!bossActive && waveInProgress){
     spawnTimer -= dt;
@@ -1763,7 +1787,7 @@ function update(dt){
         player.x=baseX; player.y=baseY-120; cameraFollow();
         document.getElementById('charNameHud').textContent=selectedChar.name.toUpperCase();
         document.getElementById('mapLabelHud').textContent=mapLabelText();
-        if(state==='playing') showMapIntro(startWave);
+        if(state==='playing') showMapIntro(hasWaveAuthority() ? startWave : ()=>{});
       };
       if(MP.on){
         if(finalMap){
@@ -2906,6 +2930,30 @@ function drawPriestBossSprite(view,walk,attack){
   if(attack){ctx.strokeStyle='rgba(187,68,255,.8)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,2,34,Date.now()/150,Date.now()/150+1.6);ctx.stroke();}
   ctx.restore();
 }
+function drawAhogadoBoss(){
+ const now=Date.now(), step=boss.phase==='approach'?Math.abs(Math.sin(now/150))*5:0;
+ const attack=boss.attackUntil&&now<boss.attackUntil;
+ // Low ripples and occasional bubbles establish that he is wading through water.
+ for(let i=0;i<3;i++){const phase=(now/520+i*13)%25;ctx.beginPath();ctx.ellipse(0,35,24+phase,5+phase*.12,0,0,Math.PI*2);ctx.strokeStyle='rgba(127,233,223,'+(0.22+(1-phase/25)*.32)+')';ctx.lineWidth=2;ctx.stroke();}
+ ctx.fillStyle='rgba(5,23,28,.4)';ctx.beginPath();ctx.ellipse(0,40,37,9,0,0,Math.PI*2);ctx.fill();
+ // Heavy, waterlogged legs and boots.
+ ctx.fillStyle='#253b38';ctx.beginPath();ctx.moveTo(-20,8);ctx.lineTo(-23,34);ctx.lineTo(-28,40);ctx.lineTo(-7,40);ctx.lineTo(-5,12);ctx.closePath();ctx.fill();
+ ctx.beginPath();ctx.moveTo(5,11);ctx.lineTo(8,38);ctx.lineTo(3,42);ctx.lineTo(25,42);ctx.lineTo(21,34);ctx.lineTo(24,8);ctx.closePath();ctx.fill();
+ ctx.fillStyle='#182a2a';ctx.fillRect(-29,35,23,8);ctx.fillRect(2,37,25,8);
+ // Swollen hunched torso, soaked old work jacket and torn hems.
+ ctx.fillStyle='#45594f';ctx.beginPath();ctx.moveTo(-29,-28);ctx.quadraticCurveTo(-43,-6,-33,17);ctx.lineTo(-24,29);ctx.lineTo(-13,22);ctx.lineTo(0,31);ctx.lineTo(13,22);ctx.lineTo(25,29);ctx.lineTo(35,10);ctx.quadraticCurveTo(43,-12,27,-32);ctx.quadraticCurveTo(0,-45,-29,-28);ctx.closePath();ctx.fill();
+ ctx.fillStyle='#263a38';ctx.beginPath();ctx.moveTo(-29,-25);ctx.lineTo(-17,-31);ctx.lineTo(-8,3);ctx.lineTo(-17,15);ctx.lineTo(-30,7);ctx.closePath();ctx.fill();
+ ctx.beginPath();ctx.moveTo(29,-24);ctx.lineTo(18,-32);ctx.lineTo(10,3);ctx.lineTo(19,16);ctx.lineTo(31,6);ctx.closePath();ctx.fill();
+ ctx.strokeStyle='rgba(144,177,154,.55)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-19,-20);ctx.lineTo(-10,5);ctx.moveTo(20,-21);ctx.lineTo(11,6);ctx.moveTo(-7,-7);ctx.lineTo(7,-7);ctx.stroke();
+ // Long, dripping black hair framing a cloudy-eyed face.
+ ctx.fillStyle='#53695d';ctx.beginPath();ctx.ellipse(0,-44,20,24,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#111b1c';ctx.beginPath();ctx.moveTo(-21,-49);ctx.quadraticCurveTo(-22,-76,0,-73);ctx.quadraticCurveTo(24,-73,22,-48);ctx.lineTo(17,-24);ctx.lineTo(11,-40);ctx.lineTo(5,-27);ctx.lineTo(-1,-42);ctx.lineTo(-10,-25);ctx.lineTo(-14,-43);ctx.closePath();ctx.fill();
+ ctx.fillStyle='#c6e2d9';ctx.globalAlpha=.86;ctx.fillRect(-11,-48,7,3);ctx.fillRect(5,-48,7,3);ctx.globalAlpha=1;
+ ctx.strokeStyle='#24302e';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-6,-35);ctx.lineTo(5,-34);ctx.stroke();
+ ctx.strokeStyle='#687d70';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-26,-55);ctx.lineTo(-28,-15);ctx.moveTo(25,-54);ctx.lineTo(28,-10);ctx.stroke();
+ if(attack){ctx.strokeStyle='rgba(127,233,223,.85)';ctx.lineWidth=4;ctx.beginPath();ctx.arc(0,7,43,now/140,now/140+1.8);ctx.stroke();}
+ for(let i=0;i<4;i++){const bx=Math.sin(now/430+i*2.2)*44,by=-8-((now/28+i*21)%84);ctx.beginPath();ctx.arc(bx,by,2+(i%2),0,Math.PI*2);ctx.strokeStyle='rgba(151,241,236,.75)';ctx.lineWidth=1.4;ctx.stroke();}
+}
 function drawBoss(){
   if(!boss) return;
   const m = currentMap();
@@ -2922,7 +2970,9 @@ function drawBoss(){
   ctx.save();
   ctx.translate(boss.x, boss.y+bobY);
   if(bwalk) ctx.rotate(Math.sin(Date.now()/130)*0.035);
-  if(m.sprite==='mariachi'){
+  if(m.name==='Acueducto'){
+    drawAhogadoBoss();
+  } else if(m.sprite==='mariachi'){
     // El Mariachi Caído: cuadro según lo que esté haciendo
     const now = Date.now();
     let key = (Math.floor(now/450)%2) ? 'idleA' : 'idleB';
@@ -3674,7 +3724,7 @@ function startGame(){
   updateOrientationOverlay();
   startAudioOnce();
   GameAudio.scheduleLoop('game');
-  showMapIntro(MP.client ? ()=>{} : startWave);
+  showMapIntro(hasWaveAuthority() ? startWave : ()=>{});
 }
 let victoryPortraits=[];
 function captureVictoryPortraits(){
@@ -3754,10 +3804,24 @@ document.getElementById('muteBtnStart').addEventListener('click', onMuteClick);
 
 
 // Portada única. El archivo de amenazas usa sprites que ya están integrados en el juego.
-function coverImgCard(src,label,place){const d=document.createElement('div');d.className='cover-boss';const im=document.createElement('img');im.src=src;im.alt=label;const t=document.createElement('strong');t.className='cover-boss-name';t.textContent=label;const where=document.createElement('span');where.className='cover-boss-place';where.textContent=place;d.append(im,t,where);return d;}
+function coverImgCard(src,label,place){const d=document.createElement('div');d.className='cover-boss';const im=document.createElement('img');im.src=src;im.alt=label;if(place==='Acueducto')im.onerror=()=>{im.onerror=null;im.src=ahogadoPortraitData();};const t=document.createElement('strong');t.className='cover-boss-name';t.textContent=label;const where=document.createElement('span');where.className='cover-boss-place';where.textContent=place;d.append(im,t,where);return d;}
 function coverPriestSprite(view){
   const c=document.createElement('canvas');c.width=128;c.height=150;const off=c.getContext('2d'),saved=ctx;
   ctx=off;ctx.translate(64,105);drawPriestBossSprite(view||'front',false,false);ctx=saved;return c.toDataURL('image/png');
+}
+function ahogadoPortraitData(){
+ const c=document.createElement('canvas');c.width=180;c.height=220;const g=c.getContext('2d');
+ g.clearRect(0,0,c.width,c.height);g.save();g.translate(90,183);
+ // Portrait fallback, transparent outside the figure (never used as the battlefield background).
+ g.fillStyle='rgba(8,28,34,.35)';g.beginPath();g.ellipse(0,6,61,13,0,0,Math.PI*2);g.fill();
+ g.fillStyle='#344b46';g.beginPath();g.moveTo(-43,-106);g.quadraticCurveTo(-54,-82,-49,-44);g.lineTo(-35,-17);g.lineTo(34,-17);g.lineTo(49,-50);g.quadraticCurveTo(54,-90,38,-110);g.closePath();g.fill();
+ g.fillStyle='#56685b';g.beginPath();g.ellipse(0,-119,28,35,0,0,Math.PI*2);g.fill();
+ g.fillStyle='#111b1b';g.beginPath();g.moveTo(-29,-133);g.quadraticCurveTo(-40,-164,-11,-164);g.quadraticCurveTo(15,-178,32,-148);g.lineTo(25,-92);g.lineTo(13,-118);g.lineTo(6,-93);g.lineTo(-5,-119);g.lineTo(-18,-91);g.lineTo(-22,-123);g.closePath();g.fill();
+ g.fillStyle='#7fe9df';g.shadowColor='#7fe9df';g.shadowBlur=8;g.fillRect(-15,-125,8,3);g.fillRect(7,-125,8,3);g.shadowBlur=0;
+ g.fillStyle='#253b38';g.beginPath();g.moveTo(-17,-77);g.lineTo(-40,-43);g.lineTo(-31,-18);g.lineTo(-12,-35);g.lineTo(0,-21);g.lineTo(17,-36);g.lineTo(34,-17);g.lineTo(43,-47);g.lineTo(20,-79);g.closePath();g.fill();
+ g.strokeStyle='rgba(127,233,223,.8)';g.lineWidth=2;g.beginPath();g.moveTo(-48,-12);g.quadraticCurveTo(0,-6,48,-12);g.stroke();
+ g.fillStyle='rgba(127,233,223,.9)';for(let i=0;i<6;i++){let x=Math.sin(i*17+Date.now()/800)*52,y=-55-(i*21%95);g.beginPath();g.arc(x,y,2+(i%2),0,Math.PI*2);g.fill();}
+ g.restore();return c.toDataURL('image/png');
 }
 function coverBossSource(m){
   if(m.name==='Acueducto')return './jefe-ahogado-acueducto.jpg';
