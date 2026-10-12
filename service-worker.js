@@ -1,4 +1,4 @@
-const CACHE_NAME = 'asedio-tecalitlan-root-v26';
+const CACHE_NAME = 'asedio-tecalitlan-root-v27';
 const APP_SHELL = [
   './',
   './index.html',

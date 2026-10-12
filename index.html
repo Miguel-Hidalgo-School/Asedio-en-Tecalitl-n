@@ -320,6 +320,14 @@
 #coverCharactersPanel .cover-character-form canvas{display:block;flex:0 0 auto!important;width:100%!important;height:clamp(145px,22vh,190px)!important;min-height:145px!important;object-fit:contain;}
 #coverCharactersPanel .cover-character-form figcaption{flex:0 0 auto!important;font-size:clamp(12px,3.4vw,15px)!important;line-height:1.15;min-height:2.4em!important;padding:7px 2px 3px!important;}
 @media(max-width:380px){#coverCharactersPanel .cover-character{padding:8px!important}#coverCharactersPanel .cover-character-forms{gap:5px!important}#coverCharactersPanel .cover-character-form{padding:4px!important}#coverCharactersPanel .cover-character-form canvas{height:clamp(138px,20vh,165px)!important;min-height:138px!important;}}
+
+/* Fullscreen zoom for hero forms, regular zombies, and bosses. */
+#artZoom{position:fixed;inset:0;z-index:10001;display:none;box-sizing:border-box;width:100vw;height:100vh;height:100dvh;padding:calc(52px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) calc(58px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));background:rgba(5,3,9,.97);align-items:center;justify-content:center;flex-direction:column;gap:10px;touch-action:manipulation;}
+#artZoom.active{display:flex;}
+#artZoom img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;image-rendering:auto;}
+#artZoomCaption{max-width:92vw;color:#ffcf60;text-align:center;font:700 16px/1.2 Rubik,sans-serif;}
+#artZoomClose{position:absolute;top:max(10px,env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px));width:48px;height:48px;border:1px solid #ffffff70;border-radius:50%;background:#21172b;color:#fff;font:32px/1 sans-serif;z-index:1;}
+#coverCharactersPanel .cover-character-form canvas,#coverBestiaryPanel .cover-zombie img,#coverBestiaryPanel .cover-boss img{cursor:zoom-in;}
 </style>
 </head>
 <body>
@@ -3871,7 +3879,7 @@ function renderCoverCharacters(){
   const canvases=[];
   [['BASE',false],['SÚPER / TRANSFORMACIÓN',true]].forEach(([label,transformed])=>{
    const figure=document.createElement('figure');figure.className='cover-character-form';
-   const art=document.createElement('canvas');art.width=280;art.height=360;art.setAttribute('aria-label',c.name+' '+label.toLowerCase());
+   const art=document.createElement('canvas');art.width=280;art.height=360;art.tabIndex=0;art.setAttribute('role','button');art.setAttribute('aria-label','Ampliar '+c.name+' '+label.toLowerCase());
    const cap=document.createElement('figcaption');cap.textContent=label;figure.append(art,cap);forms.appendChild(figure);canvases.push([art,transformed]);
   });
   const desc=document.createElement('p');desc.textContent=c.power||'Guerrero de Tecalitlán';
@@ -3885,6 +3893,19 @@ function renderCoverCharacters(){
 renderCoverCharacters();
 const coverPanel=document.getElementById('coverBestiaryPanel');
 const coverCharactersPanel=document.getElementById('coverCharactersPanel');
+const artZoom=document.createElement('div');
+artZoom.id='artZoom';artZoom.setAttribute('role','dialog');artZoom.setAttribute('aria-modal','true');artZoom.setAttribute('aria-label','Imagen ampliada');artZoom.setAttribute('aria-hidden','true');
+artZoom.innerHTML='<button id="artZoomClose" type="button" aria-label="Cerrar imagen">×</button><img id="artZoomImage" alt=""><div id="artZoomCaption"></div>';
+document.body.appendChild(artZoom);
+const artZoomImage=artZoom.querySelector('#artZoomImage'),artZoomCaption=artZoom.querySelector('#artZoomCaption'),artZoomClose=artZoom.querySelector('#artZoomClose');
+let artZoomReturnFocus=null;
+function openArtZoom(src,label){if(!src)return;artZoomReturnFocus=document.activeElement;artZoomImage.src=src;artZoomImage.alt=label||'Imagen ampliada';artZoomCaption.textContent=label||'';artZoom.classList.add('active');artZoom.setAttribute('aria-hidden','false');artZoomClose.focus({preventScroll:true});}
+function closeArtZoom(){if(!artZoom.classList.contains('active'))return;artZoom.classList.remove('active');artZoom.setAttribute('aria-hidden','true');artZoomImage.removeAttribute('src');if(artZoomReturnFocus&&artZoomReturnFocus.focus)artZoomReturnFocus.focus({preventScroll:true});}
+artZoomClose.addEventListener('click',closeArtZoom);
+artZoom.addEventListener('click',e=>{if(e.target===artZoom)closeArtZoom();});
+coverCharactersPanel.addEventListener('click',e=>{const canvas=e.target.closest&&e.target.closest('.cover-character-form canvas');if(!canvas)return;try{openArtZoom(canvas.toDataURL('image/png'),canvas.getAttribute('aria-label')||'Héroe');}catch(_){}});
+coverCharactersPanel.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('.cover-character-form canvas')){e.preventDefault();try{openArtZoom(e.target.toDataURL('image/png'),e.target.getAttribute('aria-label')||'Héroe');}catch(_){}}});
+coverPanel.addEventListener('click',e=>{const image=e.target.closest&&e.target.closest('.cover-zombie img,.cover-boss img');if(!image)return;const card=image.closest('.cover-zombie,.cover-boss');const title=card&&(card.querySelector('.cover-boss-name,.cover-zombie span')||{}).textContent;openArtZoom(image.currentSrc||image.src,(title||image.alt||'Zombi').trim());});
 function closeCoverPanels(){[coverPanel,coverCharactersPanel].forEach(panel=>{panel.classList.remove('active');panel.setAttribute('aria-hidden','true');});document.documentElement.style.overflow='';document.body.style.overflow='';}
 function openCoverPanel(panel){closeCoverPanels();panel.classList.add('active');panel.setAttribute('aria-hidden','false');document.documentElement.style.overflow='hidden';document.body.style.overflow='hidden';const card=panel.querySelector('.bestiary-card');if(card)card.scrollTop=0;}
 document.getElementById('coverBestiaryOpen').addEventListener('click',()=>openCoverPanel(coverPanel));
@@ -3893,7 +3914,7 @@ coverPanel.addEventListener('click',e=>{if(e.target===coverPanel)closeCoverPanel
 document.getElementById('coverCharactersOpen').addEventListener('click',()=>openCoverPanel(coverCharactersPanel));
 document.getElementById('coverCharactersClose').addEventListener('click',closeCoverPanels);
 coverCharactersPanel.addEventListener('click',e=>{if(e.target===coverCharactersPanel)closeCoverPanels();});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&(coverPanel.classList.contains('active')||coverCharactersPanel.classList.contains('active')))closeCoverPanels();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(artZoom.classList.contains('active'))closeArtZoom();else if(coverPanel.classList.contains('active')||coverCharactersPanel.classList.contains('active'))closeCoverPanels();}});
 const coverEnterButton=document.getElementById('coverEnter');
 let coverEnterHandledAt=0;
 function enterCharacterSelection(e){
