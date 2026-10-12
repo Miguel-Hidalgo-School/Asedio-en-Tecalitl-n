@@ -654,7 +654,7 @@ window.addEventListener('keydown', startAudioOnce);
 
 // ---------- characters ----------
 const CHARACTERS = [
-  {id:'xolotl', name:'Súper Xólotl', color:'#FF8A3D', power:'Súper Aliento del Cráter: se transforma cada cierto tiempo', powerColor:'#8CE6FF', hair:'#1a1a1a', hairStyle:'spiky', skin:'#e8b48a', accessory:'gi', powerType:'blast',
+  {id:'xolotl', name:'Súper Xólotl', color:'#FF8A3D', power:'Súper Aliento del Cráter: fuego en cuatro direcciones que cruza la pantalla', powerColor:'#8CE6FF', hair:'#1a1a1a', hairStyle:'spiky', skin:'#e8b48a', accessory:'gi', powerType:'blast',
     powerFx:'fire', voiceLine:'¡Aliento del cráter!', voicePitch:0.75, voiceRate:0.95, cryPitch:130,
     legend:'Cuentan los abuelos de Tecalitlán que Xólotl, el perro-relámpago que guía a los muertos, despertó la noche en que la plaza empezó a llenarse de cadáveres caminantes. Ahora pelea del lado de los vivos, escupiendo fuego del inframundo contra quienes ya no deberían caminar.'},
   {id:'tonatiuh', name:'Tonatiuh', color:'#3D6BFF', power:'Resplandor Solar: ráfaga frontal · se transforma cada cierto tiempo', powerColor:'#FFD86B', hair:'#1a1a1a', hairStyle:'spikyShort', skin:'#e8b48a', accessory:'gi', powerType:'blast',
@@ -922,11 +922,12 @@ let ammo = 18, maxAmmo = 18, hasRifle = false;
 let fireCooldown = 0;
 let powerActive = false, powerTimeLeft = 0, POWER_DURATION = 60;
 
-// Súper Aliento del Cráter (solo Súper Xólotl): cada cierto tiempo se transforma y lanza
-// una llamarada en cono que quema a todos los zombies del área y daña mucho más a los jefes.
+// Súper Aliento del Cráter (Xólotl): cuatro llamaradas cardinales simultáneas, de alcance
+// superior al viewport, con explosiones y fragmentos. Los tiempos conservan la carga/cooldown global.
 const SUPER_FIRST = 18, SUPER_INTERVAL = 32, SUPER_DURATION = 9;
 const SUPER_RANGE = 290, SUPER_HALF = 0.6, SUPER_ZOMBIE_DPS = 280, SUPER_BOSS_DPS = 360;
-// Xólotl's super uses long-range traveling firebolts, impact blasts, and piercing embers.
+const XOLOTL_VOLLEY_INTERVAL = 0.82, XOLOTL_BOLT_SPEED = 1180;
+// Xólotl's super uses four cardinal traveling firebolts, impact blasts, embers, and a shield aura.
 let xolotlFireballs=[], xolotlFireFragments=[], xolotlBlasts=[], xolotlFireCd=0;
 let superActive = false, superTimeLeft = 0, superCharge = 0, superNext = SUPER_FIRST, superFlameTimer = 0, superT0 = 0, superWaveStart = 0;
 let bossActive = false, boss = null;
@@ -2287,23 +2288,23 @@ function drawTorbellinoFx(){
 }
 
 function xolotlFireBurst(x,y){
-  const radius=164;
-  xolotlBlasts.push({x,y,life:.42,max:.42,radius});
-  particles.push({x,y,life:.5,type:'shock'});
-  for(let k=0;k<22;k++){
-    const a=Math.random()*Math.PI*2, r=Math.random()*radius*.8;
-    particles.push({x:x+Math.cos(a)*r,y:y+Math.sin(a)*r,life:.3+Math.random()*.32,type:k%3===0?'spark':'ember'});
+  const radius=226;
+  xolotlBlasts.push({x,y,life:.5,max:.5,radius});
+  particles.push({x,y,life:.62,type:'shock'});
+  for(let k=0;k<30;k++){
+    const a=Math.random()*Math.PI*2, r=Math.random()*radius*.85;
+    particles.push({x:x+Math.cos(a)*r,y:y+Math.sin(a)*r,life:.35+Math.random()*.42,type:k%3===0?'spark':'ember'});
   }
-  // Heavy, falloff blast damages every nearby target, including bosses.
+  // Each bolt detonates once on impact: a strong, radial burst clears nearby zombies and hurts bosses.
   for(let i=zombies.length-1;i>=0;i--){
     const z=zombies[i], d=dist(x,y,z.x,z.y);
-    if(d<radius+z.radius) damageZombie(z,Math.round(270*(1-Math.max(0,d/radius)*.48)),i,true);
+    if(d<radius+z.radius) damageZombie(z,Math.round(460*(1-Math.max(0,d/radius)*.42)),i,true);
   }
-  if(boss){const d=dist(x,y,boss.x,boss.y);if(d<radius+boss.radius) boss.hp-=(boss.shielded?.18:1)*300*(1-Math.max(0,d/radius)*.42);}
-  // Eight hot fragments fan out from the detonation and can each hit a different target.
-  for(let k=0;k<8;k++){
-    const a=Math.atan2(y-player.y,x-player.x)+(k-3.5)*.24+(Math.random()-.5)*.12;
-    xolotlFireFragments.push({x,y,vx:Math.cos(a)*(430+Math.random()*150),vy:Math.sin(a)*(430+Math.random()*150),life:.58,hit:false});
+  if(boss){const d=dist(x,y,boss.x,boss.y);if(d<radius+boss.radius) boss.hp-=(boss.shielded?.18:1)*680*(1-Math.max(0,d/radius)*.34);}
+  // Embers radiate in all directions from the impact, independently of the player's facing.
+  for(let k=0;k<16;k++){
+    const a=(k/16)*Math.PI*2+(Math.random()-.5)*.18, speed=440+Math.random()*230;
+    xolotlFireFragments.push({x,y,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:.62,hit:false});
   }
   GameAudio.sfx('flame');
 }
@@ -2311,51 +2312,66 @@ function updateXolotlFire(dt, emitting){
   if(emitting){
     xolotlFireCd-=dt;
     if(xolotlFireCd<=0){
-      xolotlFireCd=.62;
-      const a=player.angle, speed=940;
-      xolotlFireballs.push({x:player.x+Math.cos(a)*32,y:player.y-16+Math.sin(a)*32,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:1.35});
-      for(let k=0;k<8;k++) particles.push({x:player.x+Math.cos(a)*30+(Math.random()-.5)*9,y:player.y-15+Math.sin(a)*30+(Math.random()-.5)*9,life:.28,type:k%3===0?'spark':'ember'});
+      xolotlFireCd=XOLOTL_VOLLEY_INTERVAL;
+      // One volley launches simultaneously up, right, down, and left from Xólotl.
+      const directions=[{x:0,y:-1},{x:1,y:0},{x:0,y:1},{x:-1,y:0}];
+      const range=Math.max(canvas.width,canvas.height)+260;
+      for(const d of directions){
+        const x=player.x+d.x*34, y=player.y-16+d.y*34;
+        xolotlFireballs.push({x,y,vx:d.x*XOLOTL_BOLT_SPEED,vy:d.y*XOLOTL_BOLT_SPEED,life:range/XOLOTL_BOLT_SPEED+.12});
+        for(let k=0;k<5;k++) particles.push({x:x+(Math.random()-.5)*9,y:y+(Math.random()-.5)*9,life:.32,type:k%3===0?'spark':'ember'});
+      }
     }
   }
   for(let i=xolotlFireballs.length-1;i>=0;i--){
-    const f=xolotlFireballs[i], ox=f.x, oy=f.y;
+    const f=xolotlFireballs[i];
     f.x+=f.vx*dt; f.y+=f.vy*dt; f.life-=dt;
-    if(Math.random()<.95) particles.push({x:f.x-f.vx*.012+(Math.random()-.5)*8,y:f.y-f.vy*.012+(Math.random()-.5)*8,life:.25+Math.random()*.12,type:Math.random()<.24?'spark':'ember'});
+    if(Math.random()<.8) particles.push({x:f.x-f.vx*.012+(Math.random()-.5)*8,y:f.y-f.vy*.012+(Math.random()-.5)*8,life:.25+Math.random()*.15,type:Math.random()<.3?'spark':'ember'});
     let impact=f.life<=0||f.x<0||f.x>worldW||f.y<0||f.y>worldH;
-    for(const z of zombies){if(dist(f.x,f.y,z.x,z.y)<z.radius+24){impact=true;break;}}
-    if(!impact&&boss&&dist(f.x,f.y,boss.x,boss.y)<boss.radius+26) impact=true;
+    for(const z of zombies){if(dist(f.x,f.y,z.x,z.y)<z.radius+27){impact=true;break;}}
+    if(!impact&&boss&&dist(f.x,f.y,boss.x,boss.y)<boss.radius+30) impact=true;
     if(impact){xolotlFireBurst(f.x,f.y);xolotlFireballs.splice(i,1);}
   }
   for(let i=xolotlFireFragments.length-1;i>=0;i--){
     const f=xolotlFireFragments[i]; f.x+=f.vx*dt; f.y+=f.vy*dt; f.life-=dt;
-    if(Math.random()<.65) particles.push({x:f.x,y:f.y,life:.16,type:'spark'});
+    if(Math.random()<.72) particles.push({x:f.x,y:f.y,life:.18,type:'spark'});
     let hit=false;
-    for(let j=zombies.length-1;j>=0;j--){const z=zombies[j];if(dist(f.x,f.y,z.x,z.y)<z.radius+8){damageZombie(z,115,j,true);hit=true;break;}}
-    if(!hit&&boss&&dist(f.x,f.y,boss.x,boss.y)<boss.radius+10){boss.hp-=(boss.shielded?.18:1)*100;hit=true;}
+    for(let j=zombies.length-1;j>=0;j--){const z=zombies[j];if(dist(f.x,f.y,z.x,z.y)<z.radius+9){damageZombie(z,150,j,true);hit=true;break;}}
+    if(!hit&&boss&&dist(f.x,f.y,boss.x,boss.y)<boss.radius+12){boss.hp-=(boss.shielded?.18:1)*130;hit=true;}
     if(hit||f.life<=0||f.x<0||f.x>worldW||f.y<0||f.y>worldH)xolotlFireFragments.splice(i,1);
   }
   for(let i=xolotlBlasts.length-1;i>=0;i--){xolotlBlasts[i].life-=dt;if(xolotlBlasts[i].life<=0)xolotlBlasts.splice(i,1);}
 }
 function drawFireBreath(){
-  // Long-traveling incandescent firebolts, explosive impact blooms, and flying embers.
+  // Four cardinal fire lanes, explosive impact blooms, radiating embers, and a protective aura.
   const t=Date.now()/1000;
   ctx.save();ctx.globalCompositeOperation='lighter';
+  if(superActive && selectedChar.id==='xolotl'){
+    const pulse=.5+.5*Math.sin(t*8), aura=82+8*pulse;
+    const ag=ctx.createRadialGradient(player.x,player.y-15,12,player.x,player.y-15,aura*1.42);
+    ag.addColorStop(0,'rgba(255,245,180,.32)');ag.addColorStop(.48,'rgba(255,104,25,.22)');ag.addColorStop(1,'rgba(255,38,10,0)');
+    ctx.fillStyle=ag;ctx.beginPath();ctx.arc(player.x,player.y-15,aura*1.42,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle=`rgba(255,218,105,${.72+.22*pulse})`;ctx.lineWidth=4+2*pulse;ctx.shadowColor='#ff4a13';ctx.shadowBlur=26;
+    ctx.beginPath();ctx.arc(player.x,player.y-15,aura,0,Math.PI*2);ctx.stroke();
+    ctx.strokeStyle=`rgba(255,110,35,${.55+.2*pulse})`;ctx.lineWidth=2;ctx.setLineDash([10,8]);ctx.lineDashOffset=-t*42;
+    ctx.beginPath();ctx.arc(player.x,player.y-15,aura+10,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+  }
   for(const f of xolotlFireballs){
-    const a=Math.atan2(f.vy,f.vx), len=94;
+    const a=Math.atan2(f.vy,f.vx), len=132;
     ctx.save();ctx.translate(f.x,f.y);ctx.rotate(a);
-    const glow=ctx.createLinearGradient(-len,0,24,0);
-    glow.addColorStop(0,'rgba(210,25,12,0)');glow.addColorStop(.42,'rgba(255,45,12,.55)');glow.addColorStop(.76,'rgba(255,116,20,.94)');glow.addColorStop(1,'rgba(255,250,190,1)');
-    ctx.shadowColor='#ff4217';ctx.shadowBlur=30;ctx.fillStyle=glow;ctx.beginPath();ctx.ellipse(-len*.28,0,len*.72,15+Math.sin(t*22)*3,0,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#fff2ae';ctx.shadowColor='#ffe271';ctx.shadowBlur=17;ctx.beginPath();ctx.arc(0,0,13+Math.sin(t*27)*2,0,Math.PI*2);ctx.fill();
-    for(let k=0;k<4;k++){const q=(t*7+k*1.57)%1;ctx.fillStyle=k%2?'#ffad32':'#fff08b';ctx.beginPath();ctx.arc(-q*len,(k-1.5)*5,2.5+q*2,0,Math.PI*2);ctx.fill();}
+    const glow=ctx.createLinearGradient(-len,0,30,0);
+    glow.addColorStop(0,'rgba(210,25,12,0)');glow.addColorStop(.38,'rgba(255,45,12,.58)');glow.addColorStop(.76,'rgba(255,116,20,.98)');glow.addColorStop(1,'rgba(255,250,190,1)');
+    ctx.shadowColor='#ff4217';ctx.shadowBlur=38;ctx.fillStyle=glow;ctx.beginPath();ctx.ellipse(-len*.28,0,len*.72,19+Math.sin(t*22)*4,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff2ae';ctx.shadowColor='#ffe271';ctx.shadowBlur=22;ctx.beginPath();ctx.arc(0,0,16+Math.sin(t*27)*2,0,Math.PI*2);ctx.fill();
+    for(let k=0;k<5;k++){const q=(t*7+k*1.25)%1;ctx.fillStyle=k%2?'#ffad32':'#fff08b';ctx.beginPath();ctx.arc(-q*len,(k-2)*6,3+q*2,0,Math.PI*2);ctx.fill();}
     ctx.restore();
   }
-  for(const f of xolotlFireFragments){ctx.fillStyle='#ff5124';ctx.shadowColor='#ff6b27';ctx.shadowBlur=15;ctx.beginPath();ctx.arc(f.x,f.y,5+f.life*2,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff0a0';ctx.beginPath();ctx.arc(f.x,f.y,2.4,0,Math.PI*2);ctx.fill();}
+  for(const f of xolotlFireFragments){ctx.fillStyle='#ff5124';ctx.shadowColor='#ff6b27';ctx.shadowBlur=18;ctx.beginPath();ctx.arc(f.x,f.y,5+f.life*2,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff0a0';ctx.beginPath();ctx.arc(f.x,f.y,2.8,0,Math.PI*2);ctx.fill();}
   for(const b of xolotlBlasts){
-    const p=1-b.life/b.max, r=b.radius*(.35+.78*p), alpha=Math.max(0,b.life/b.max);
-    const g=ctx.createRadialGradient(b.x,b.y,2,b.x,b.y,r);g.addColorStop(0,`rgba(255,250,180,${.9*alpha})`);g.addColorStop(.25,`rgba(255,156,30,${.8*alpha})`);g.addColorStop(.65,`rgba(244,48,15,${.5*alpha})`);g.addColorStop(1,'rgba(100,10,0,0)');
+    const p=1-b.life/b.max, r=b.radius*(.25+.88*p), alpha=Math.max(0,b.life/b.max);
+    const g=ctx.createRadialGradient(b.x,b.y,2,b.x,b.y,r);g.addColorStop(0,`rgba(255,250,180,${.98*alpha})`);g.addColorStop(.25,`rgba(255,156,30,${.9*alpha})`);g.addColorStop(.65,`rgba(244,48,15,${.62*alpha})`);g.addColorStop(1,'rgba(100,10,0,0)');
     ctx.fillStyle=g;ctx.beginPath();ctx.arc(b.x,b.y,r,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle=`rgba(255,220,100,${.8*alpha})`;ctx.lineWidth=8*(1-p)+2;ctx.beginPath();ctx.arc(b.x,b.y,r*.82,0,Math.PI*2);ctx.stroke();
+    ctx.strokeStyle=`rgba(255,220,100,${.95*alpha})`;ctx.lineWidth=10*(1-p)+3;ctx.beginPath();ctx.arc(b.x,b.y,r*.82,0,Math.PI*2);ctx.stroke();
   }
   ctx.restore();
 }
