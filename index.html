@@ -308,6 +308,18 @@
  .xolotl-angle-card img{display:block;width:100%;height:clamp(88px,14vh,126px);object-fit:contain;}
 }
 
+
+/* Character gallery correction: show only Base + Transformation, with natural card height and scrolling. */
+#coverCharactersPanel .bestiary-card{overflow-y:auto!important;overflow-x:hidden!important;}
+#coverCharactersPanel .cover-characters{flex:0 0 auto!important;min-height:0!important;display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:none!important;grid-auto-rows:auto!important;gap:12px!important;overflow:visible!important;align-content:start!important;width:100%;}
+#coverCharactersPanel .cover-character{box-sizing:border-box;width:100%;min-width:0;min-height:0!important;height:auto!important;padding:10px!important;gap:8px!important;overflow:visible!important;}
+#coverCharactersPanel .cover-character h3{font-size:clamp(21px,5vw,26px)!important;line-height:1.1;margin:0!important;}
+#coverCharactersPanel .cover-character p{font-size:clamp(12px,3.2vw,14px)!important;line-height:1.35!important;margin:0!important;}
+#coverCharactersPanel .cover-character-forms{display:grid!important;flex:0 0 auto!important;min-height:0!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-rows:auto!important;gap:8px!important;width:100%;}
+#coverCharactersPanel .cover-character-form{box-sizing:border-box;display:flex!important;flex-direction:column;min-width:0;min-height:0!important;height:auto!important;padding:6px!important;}
+#coverCharactersPanel .cover-character-form canvas{display:block;flex:0 0 auto!important;width:100%!important;height:clamp(145px,22vh,190px)!important;min-height:145px!important;object-fit:contain;}
+#coverCharactersPanel .cover-character-form figcaption{flex:0 0 auto!important;font-size:clamp(12px,3.4vw,15px)!important;line-height:1.15;min-height:2.4em!important;padding:7px 2px 3px!important;}
+@media(max-width:380px){#coverCharactersPanel .cover-character{padding:8px!important}#coverCharactersPanel .cover-character-forms{gap:5px!important}#coverCharactersPanel .cover-character-form{padding:4px!important}#coverCharactersPanel .cover-character-form canvas{height:clamp(138px,20vh,165px)!important;min-height:138px!important;}}
 </style>
 </head>
 <body>
@@ -1916,10 +1928,9 @@ function drawMetrallaFx(){
 }
 function mDraw(x,y,a,sup,moving){
   const set = sup ? M_IMG.s : M_IMG.b;
-  // During movement, use a left/right walk view even when moving vertically/diagonally;
-  // never show Metralla's back-facing artwork while the player is walking.
+  // Never use Metralla's back-facing art; vertical movement keeps a front or side view.
   const moveA = playerMoving ? playerMoveAngle : a, sy = Math.sin(moveA);
-  const im = playerMoving ? set[Math.cos(moveA)>=0?'right':'left'] : set[sy<-0.6?'back':sy>0.6?'front':(Math.cos(a)>=0?'right':'left')];
+  const im = playerMoving ? set[Math.cos(moveA)>=0?'right':'left'] : set[sy>0.6?'front':(Math.cos(a)>=0?'right':'left')];
   if(!im || !im.complete || !im.naturalWidth) return false;
   const h = sup ? 112 : 74, w = h*im.naturalWidth/im.naturalHeight;
   const bob = moving ? Math.abs(Math.sin(Date.now()/120))*-3 : 0;
@@ -2581,7 +2592,7 @@ function drawSuperTepoztliSprite(){
   const moveAngle=playerMoving?playerMoveAngle:player.angle;
   const sy = Math.sin(moveAngle), face = Math.cos(moveAngle)>=0 ? 1 : -1;
   let key = 'front', flip = 1;
-  if(playerMoving){ key='side'; flip=face; } else if(sy < -0.5){ key='back'; }
+  if(playerMoving){ key='side'; flip=face; }
   const f = TEPOZTLI_SUPER_SPRITES[key];
   if(!f || !f.img.complete || !f.img.naturalWidth) return false;
   const t = Date.now()/1000, el = Math.min(1,(Date.now()-superT0)/450), sc = el<1 ? 0.6+0.4*(1-(1-el)*(1-el)) : 1;
@@ -2608,7 +2619,6 @@ function drawXolotlSprite(){
   const moveAngle=playerMoving?playerMoveAngle:player.angle;
   const moveFace=Math.cos(moveAngle)>=0?1:-1;
   if(playerMoving){ key='walk'; flip = -moveFace; }         // walk side view follows movement, never back-facing
-  else if(sy < -0.6 && playerFiring){ key='back'; }
   else if(playerFiring){ key='fight'; flip = face; }         // pose de pelea al disparar en otras direcciones (mira a la derecha)
   else { key='front'; }                                       // quieto: de frente
   const f = XOLOTL_SPRITES[key];
@@ -2624,13 +2634,11 @@ function drawXolotlSprite(){
 // Sprite de Torbellino: forma normal (front/back/walk) y, mientras dura el Súper Ciclón,
 // el arte ventoso propio de la transformación (front/back/side) — maneja su propio estado
 // de súper igual que Metralla, así que drawPlayer() puede llamarla siempre primero.
-// Sprite de Tepoztli (solo frente/espaldas: es un guerrero que pelea quieto, sin
-// pose de carrera en el arte disponible).
+// Tepoztli conserva la vista frontal cuando se mueve; nunca se usa una pose de espalda.
 function drawTepoztliSprite(){
   if(superActive && drawSuperTepoztliSprite()) return true;
-  // Tepoztli has no normal walk cycle: use his recognizable front pose while moving.
-  const sy = Math.sin(player.angle);
-  const key = playerMoving ? 'front' : ((sy < 0) ? 'back' : 'front');
+  // Tepoztli has no normal walk cycle: keep the recognizable front pose, never the back view.
+  const key = 'front';
   const f = TEPOZTLI_SPRITES[key];
   if(!f || !f.img.complete || !f.img.naturalWidth) return false;
   const h = 78, w = h*f.w/f.h;
@@ -2650,12 +2658,10 @@ function drawTorbellinoSprite(){
   let f, flip = 1, scaleH = 76;
   if(superActive){
     if(playerMoving){ f=TORBELLINO_SUPER_SPRITES.side; flip=sx>0?1:-1; }
-    else if(sy < -0.5){ f=TORBELLINO_SUPER_SPRITES.back; }
     else { f=TORBELLINO_SUPER_SPRITES.front; }
     scaleH=96;
   }else{
     if(playerMoving){ f=TORBELLINO_SPRITES.walk; flip=sx>0?-1:1; }
-    else if(sy < -0.6){ f=TORBELLINO_SPRITES.back; }
     else { f=TORBELLINO_SPRITES.front; }
   }
   if(!f||!f.img.complete||!f.img.naturalWidth)return false;
@@ -2670,7 +2676,6 @@ function drawTonatiuhSprite(){
   const sy = Math.sin(moveAngle), face = Math.cos(moveAngle)>=0 ? 1 : -1;
   let key, flip = 1;
   if(playerMoving){ key = (Math.floor(Date.now()/170)%2) ? 'side1' : 'side2'; flip = face; } // walk profile follows movement; no back view
-  else if(sy < -0.6 && playerFiring){ key='back'; }
   else if(sy > 0.6){ key='front'; }
   else if(playerFiring){ key='prof'; flip = -face; }               // disparando de lado: perfil (el arte mira a la izquierda)
   else { key='side1'; flip = face; }
@@ -3871,18 +3876,6 @@ function renderCoverCharacters(){
   });
   const desc=document.createElement('p');desc.textContent=c.power||'Guerrero de Tecalitlán';
   card.append(h,forms,desc);
-  if(c.id==='xolotl'){
-   const angles=document.createElement('section');angles.className='xolotl-angle-gallery';
-   const angleTitle=document.createElement('h4');angleTitle.textContent='VISTAS DE SÚPER XÓLOTL';angles.appendChild(angleTitle);
-   const grid=document.createElement('div');grid.className='xolotl-angle-grid';
-   for(let i=1;i<=5;i++){
-    const figure=document.createElement('figure');figure.className='xolotl-angle-card';
-    const img=document.createElement('img');img.src='./xolotl-super-view-'+i+'.jpg';img.alt='Súper Xólotl, vista '+i;img.loading='lazy';
-    const cap=document.createElement('figcaption');cap.textContent='ÁNGULO '+i;
-    figure.append(img,cap);grid.appendChild(figure);
-   }
-   angles.appendChild(grid);card.appendChild(angles);
-  }
   box.appendChild(card);
   let attempts=0;
   const paint=()=>{const images=gallerySpriteImages(c);if(images.length&&images.some(im=>!im.complete||!im.naturalWidth)&&attempts++<30){setTimeout(paint,180);return;}canvases.forEach(([art,form])=>drawGalleryFigure(art,c,form));};
