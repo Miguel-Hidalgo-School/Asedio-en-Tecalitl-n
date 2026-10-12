@@ -376,7 +376,7 @@
     </div>
     <button id="powerBtn" class="touchAction" type="button">PODER</button>
     <button id="reloadBtn" class="touchAction" type="button">RECARGA</button>
-    <button id="fireBtn" class="touchAction" type="button" aria-label="Mantén para disparar">FUEGO</button>
+    <button id="fireBtn" class="touchAction" type="button" aria-label="Disparo opcional; también dispara al apuntar con el stick derecho">FUEGO</button>
   </div>
 
   <div id="ctrlHint"></div>
@@ -456,7 +456,7 @@ if(window.visualViewport){ window.visualViewport.addEventListener('resize', resi
 
 const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 document.getElementById('ctrlHint').textContent = isTouch
-  ? 'Joystick izq: moverte · Joystick der: apuntar/disparar · Botón: poder'
+  ? 'Joystick izq: moverte · Joystick der: apuntar y disparar en continuo · FUEGO opcional · Botón: poder'
   : 'WASD: moverte · Ratón: apuntar y disparar · Barra espaciadora: poder';
 
 // ---------- audio (música y efectos generados por código, 100% original) ----------
@@ -1515,7 +1515,7 @@ function update(dt){
   let firing = false;
   if(isTouch){
     if(aimActive) aimAngle = Math.atan2(aimVec.y, aimVec.x);
-    firing = touchFireHeld;
+    firing = touchFireHeld || aimActive;
   } else {
     aimAngle = Math.atan2(mouse.y-player.y, mouse.x-player.x);
     firing = mouse.down;
