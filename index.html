@@ -3617,6 +3617,7 @@ function coverPriestSprite(view){
   ctx=off;ctx.translate(64,105);drawPriestBossSprite(view||'front',false,false);ctx=saved;return c.toDataURL('image/png');
 }
 function coverBossSource(m){
+  if(m.name==='Acueducto')return './jefe-ahogado-acueducto.jpg';
   if(m.sprite==='mariachi')return MARIACHI_FRAMES.idleA.img.src;
   if(m.sprite==='priest'||isPurisimaMap(m))return coverPriestSprite('front');
   if(m.sprite==='patron')return PATRON.front.img.src;
