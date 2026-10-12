@@ -1,4 +1,4 @@
-const CACHE_NAME = 'asedio-tecalitlan-root-v17';
+const CACHE_NAME = 'asedio-tecalitlan-root-v20';
 const APP_SHELL = [
   './',
   './index.html',
@@ -9,7 +9,12 @@ const APP_SHELL = [
   './asedio-icon-512.png',
   './asedio-apple-touch-icon.png',
   './jefe-purisima-atlas.png',
-  './jefe-ahogado-acueducto.jpg'
+  './jefe-ahogado-acueducto.jpg',
+  './xolotl-super-view-1.jpg',
+  './xolotl-super-view-2.jpg',
+  './xolotl-super-view-3.jpg',
+  './xolotl-super-view-4.jpg',
+  './xolotl-super-view-5.jpg'
 ];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)));
