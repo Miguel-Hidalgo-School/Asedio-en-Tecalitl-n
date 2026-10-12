@@ -383,7 +383,7 @@
     <img class="cover-art" src="./portada.jpg" alt="Tres héroes defienden Tecalitlán de una invasión zombi: Mixcóatl con espada violeta, un héroe azul eléctrico y un héroe enmascarado naranja y verde">
     <div class="cover-vignette"></div>
     <div class="cover-heading"><div class="cover-kicker">SUPERVIVENCIA · TECALITLÁN, JALISCO</div><h1>ASEDIO<br><span>TECALITLÁN</span></h1></div>
-    <div class="cover-actions"><div class="cover-credit">CHAVARRÍA PRODUCCIONES</div><div class="cover-browse-row"><button id="coverCharactersOpen" class="cover-gallery-btn">VER PERSONAJES</button><button id="coverBestiaryOpen" class="cover-gallery-btn">VER ZOMBIS</button></div><button id="coverEnter" class="cover-enter">INICIAR JUEGO</button><button id="installAppBtn" class="cover-install" type="button">📲 INSTALAR APP</button><div id="installAppStatus" class="cover-install-note" aria-live="polite"></div></div>
+    <div class="cover-actions"><div class="cover-credit">CHAVARRÍA PRODUCCIONES</div><div class="cover-browse-row"><button id="coverCharactersOpen" class="cover-gallery-btn">VER PERSONAJES</button><button id="coverBestiaryOpen" class="cover-gallery-btn">VER ZOMBIS</button></div><button id="coverEnter" class="cover-enter" type="button">INICIAR JUEGO</button><button id="installAppBtn" class="cover-install" type="button">📲 INSTALAR APP</button><div id="installAppStatus" class="cover-install-note" aria-live="polite"></div></div>
   </section>
   <section id="coverBestiaryPanel" aria-label="Archivo de amenazas" aria-hidden="true">
     <div class="bestiary-card"><button id="coverBestiaryClose" class="bestiary-close" aria-label="Cerrar">×</button><div class="bestiary-title">ARCHIVO DE AMENAZAS</div>
@@ -3697,7 +3697,26 @@ document.getElementById('coverCharactersOpen').addEventListener('click',()=>open
 document.getElementById('coverCharactersClose').addEventListener('click',closeCoverPanels);
 coverCharactersPanel.addEventListener('click',e=>{if(e.target===coverCharactersPanel)closeCoverPanels();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&(coverPanel.classList.contains('active')||coverCharactersPanel.classList.contains('active')))closeCoverPanels();});
-document.getElementById('coverEnter').addEventListener('click',()=>{closeCoverPanels();document.getElementById('coverScreen').style.display='none';document.getElementById('startScreen').style.display='flex';});
+const coverEnterButton=document.getElementById('coverEnter');
+let coverEnterHandledAt=0;
+function enterCharacterSelection(e){
+ if(e){e.preventDefault();e.stopPropagation();}
+ const now=Date.now();if(now-coverEnterHandledAt<700)return;coverEnterHandledAt=now;
+ const cover=document.getElementById('coverScreen'),start=document.getElementById('startScreen');
+ if(!cover||!start)return;
+ closeCoverPanels();
+ cover.setAttribute('aria-hidden','true');cover.style.display='none';
+ start.setAttribute('aria-hidden','false');start.style.display='flex';start.style.visibility='visible';start.style.opacity='1';start.style.pointerEvents='auto';start.scrollTop=0;
+ document.documentElement.style.overflow='';document.body.style.overflow='';
+ state='menu';loadStartBgPhoto();renderLeaderboard('leaderboardStart',100);
+}
+if(coverEnterButton){
+ coverEnterButton.type='button';
+ coverEnterButton.style.touchAction='manipulation';
+ coverEnterButton.addEventListener('click',enterCharacterSelection);
+ coverEnterButton.addEventListener('pointerup',e=>{if(e.pointerType==='touch')enterCharacterSelection(e);});
+ coverEnterButton.addEventListener('touchend',enterCharacterSelection,{passive:false});
+}
 
 // Voice media/signaling through Metered Realtime; Firebase remains unchanged for rooms and gameplay state.
 const VOICE={stream:null,peer:null,enabled:false,talking:false,speakerOn:true,remoteAudios:[]};
