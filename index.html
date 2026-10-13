@@ -171,6 +171,7 @@
   #rotateOverlay .icon{font-size:54px; margin-bottom:14px; animation:rotateHint 1.6s ease-in-out infinite;}
   #rotateOverlay h2{font-family:'Bebas Neue'; color:var(--gold); font-size:28px; letter-spacing:1px; margin:0 0 8px;}
   #rotateOverlay p{color:var(--paper); opacity:0.8; font-size:14px; max-width:320px; margin:0;}
+  #rotateContinue{margin-top:22px;padding:12px 22px;border:2px solid var(--gold);border-radius:12px;background:#382345;color:var(--paper);font:700 16px 'Bebas Neue';letter-spacing:.6px;touch-action:manipulation;}
   @keyframes rotateHint{ 0%,100%{transform:rotate(0deg);} 50%{transform:rotate(90deg);} }
   @media (max-width:900px){
     body.is-touch #rotateOverlay.active{ display:flex; }
@@ -423,6 +424,7 @@
     <div class="icon">📱</div>
     <h2>GIRA TU TELÉFONO</h2>
     <p>Asedio Tecalitlán se juega en horizontal, para que sostengas el celular cómodo con ambas manos en los joysticks.</p>
+    <button id="rotateContinue" type="button">CONTINUAR</button>
   </div>
 
   <div id="mapIntro">
@@ -489,7 +491,7 @@ function resize(){
 resize(); window.addEventListener('resize', resize);
 if(window.visualViewport){ window.visualViewport.addEventListener('resize', resize); window.visualViewport.addEventListener('scroll', resize); }
 
-const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0 || !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
 document.getElementById('ctrlHint').textContent = isTouch
   ? 'Joystick izq: moverte · Joystick der: apuntar y disparar en continuo · Botón: poder'
   : 'WASD: moverte · Ratón: apuntar y disparar · Barra espaciadora: poder';
@@ -514,6 +516,32 @@ const GameAudio = (function(){
   customMusic.loop = true;
   customMusic.volume = 0.5;
   let customMusicState = 'unknown'; // 'unknown' | 'ready' | 'failed'
+  let adaptiveKey='', volumeFadeTimer=null;
+
+  function fadeCustomVolume(target){
+    if(volumeFadeTimer){clearInterval(volumeFadeTimer);volumeFadeTimer=null;}
+    const from=customMusic.volume, start=Date.now(), duration=700;
+    volumeFadeTimer=setInterval(()=>{
+      const t=Math.min(1,(Date.now()-start)/duration);
+      customMusic.volume=Math.max(0,Math.min(1,from+(target-from)*t));
+      if(t>=1){clearInterval(volumeFadeTimer);volumeFadeTimer=null;}
+    },50);
+  }
+  function setGameplayMood(mode,wave,boss,health){
+    const hp=Math.max(0,Math.min(100,Number(health)||0));
+    const waveHeat=Math.max(0,Math.min(1,(Number(wave||1)-1)/8));
+    const healthHeat=Math.max(0,Math.min(1,(55-hp)/55));
+    const heat=mode==='game'?Math.min(1,0.10+waveHeat*.28+healthHeat*.38+(boss ? 0.36 : 0)):0;
+    const bucket=Math.round(heat*10);
+    const key=mode+':'+bucket+':'+(boss?1:0);
+    if(key===adaptiveKey)return;
+    adaptiveKey=key;
+    const targetVolume=mode==='game'?0.34+heat*.22:0.30;
+    const targetRate=mode==='game'?1+heat*.075:0.96;
+    fadeCustomVolume(muted?0:targetVolume);
+    try{customMusic.playbackRate=targetRate;}catch(_){ }
+    if(musicGain&&ctx) musicGain.gain.setTargetAtTime(muted?0:(mode==='game'?0.24+heat*.10:0.22),ctx.currentTime,0.45);
+  }
 
   // Motivo del último fallo (solo para diagnóstico: abre el juego con ?debug al final del link)
   let customMusicReason = '';
@@ -584,6 +612,7 @@ const GameAudio = (function(){
   function scheduleLoop(mode){
     ensureCtx();
     currentTrack = mode;
+    setGameplayMood(mode,1,false,100);
     if(customMusicState==='ready'){
       // ya confirmamos que la banda sonora real funciona: se queda sonando de corrido
       stopMusic();
@@ -628,6 +657,7 @@ const GameAudio = (function(){
     else if(type==='hit')    tone(240,t,0.06,'sawtooth',sfxGain,0.12,140);
     else if(type==='death'){ noiseHit(t,0.16,0.22,sfxGain); tone(150,t,0.15,'sawtooth',sfxGain,0.14,55); }
     else if(type==='pickup') tone(660,t,0.09,'sine',sfxGain,0.2,990);
+    else if(type==='heartbeat'){ tone(72,t,0.12,'sine',sfxGain,0.18,46); tone(58,t+0.19,0.16,'sine',sfxGain,0.15,38); }
     else if(type==='power')  tone(220,t,0.35,'sawtooth',sfxGain,0.22,880);
     else if(type==='wave'){  tone(330,t,0.12,'square',sfxGain,0.2,440); tone(440,t+0.12,0.14,'square',sfxGain,0.2,554); }
     else if(type==='gameover') tone(392,t,0.35,'sawtooth',sfxGain,0.2,180);
@@ -683,14 +713,16 @@ const GameAudio = (function(){
 
   function setMuted(v){
     muted = v;
-    if(musicGain) musicGain.gain.value = muted?0:0.32;
+    const heat=adaptiveKey.includes(':')?Number(adaptiveKey.split(':')[1])/10:0;
+    if(musicGain&&ctx) musicGain.gain.setTargetAtTime(muted?0:(currentTrack==='game'?0.24+heat*.10:0.22),ctx.currentTime,0.12);
     if(sfxGain) sfxGain.gain.value = muted?0:0.5;
     customMusic.muted = muted;
+    fadeCustomVolume(muted?0:(currentTrack==='game'?0.34+heat*.22:0.30));
   }
   function toggleMute(){ setMuted(!muted); return muted; }
   function isMuted(){ return muted; }
 
-  return { ensureCtx, scheduleLoop, stopMusic, sfx, toggleMute, isMuted };
+  return { ensureCtx, scheduleLoop, stopMusic, sfx, toggleMute, isMuted, setGameplayMood };
 })();
 
 // Los navegadores exigen un gesto del usuario antes de reproducir audio:
@@ -1041,37 +1073,50 @@ window.addEventListener('mouseup', ()=>{ mouse.down=false; });
 // de inmediato (deadzone mínima) y no necesita mantenerse "girado".
 let moveVec = {x:0,y:0}, aimVec = {x:0,y:0}, aimActive=false;
 function setupFloatingStick(zoneEl, baseEl, nubEl, onMove, onEnd){
-  let touchId = null, ox=0, oy=0;
-  const MAX = 42; // qué tan lejos hay que mover el dedo para llegar al 100%
-  zoneEl.addEventListener('touchstart', e=>{
-    e.preventDefault();
-    const t = e.changedTouches[0]; touchId = t.identifier;
-    ox = t.clientX; oy = t.clientY;
-    baseEl.style.left = ox+'px'; baseEl.style.top = oy+'px'; baseEl.style.display='block';
+  let activeId=null, ox=0, oy=0;
+  const MAX=42;
+  const begin=(id,x,y)=>{
+    if(activeId!==null) return false;
+    activeId=id; ox=x; oy=y;
+    baseEl.style.left=x+'px'; baseEl.style.top=y+'px'; baseEl.style.display='block';
     nubEl.style.left='50%'; nubEl.style.top='50%';
-  }, {passive:false});
-  zoneEl.addEventListener('touchmove', e=>{
-    for(const t of e.changedTouches){
-      if(t.identifier===touchId){
-        let dx=t.clientX-ox, dy=t.clientY-oy;
-        const dist=Math.hypot(dx,dy);
-        const clamped = Math.min(dist, MAX);
-        const nx = dist>0 ? dx/dist : 0, ny = dist>0 ? dy/dist : 0;
-        nubEl.style.left = (55+nx*clamped)+'px'; nubEl.style.top = (55+ny*clamped)+'px';
-        if(dist > 4){ onMove(dx/MAX, dy/MAX, dist/MAX); }
-        else { onMove(0,0,0); }
-      }
-    }
-  }, {passive:false});
-  const endHandler = e=>{
-    for(const t of e.changedTouches){
-      if(t.identifier===touchId){
-        touchId=null; baseEl.style.display='none'; onEnd();
-      }
-    }
+    return true;
   };
-  zoneEl.addEventListener('touchend', endHandler);
-  zoneEl.addEventListener('touchcancel', endHandler);
+  const move=(x,y)=>{
+    const dx=x-ox, dy=y-oy, d=Math.hypot(dx,dy), clamped=Math.min(d,MAX);
+    const nx=d>0?dx/d:0, ny=d>0?dy/d:0;
+    nubEl.style.left=(55+nx*clamped)+'px'; nubEl.style.top=(55+ny*clamped)+'px';
+    if(d>4) onMove(dx/MAX,dy/MAX,d/MAX); else onMove(0,0,0);
+  };
+  const finish=id=>{
+    if(activeId!==id) return;
+    activeId=null; baseEl.style.display='none'; onEnd();
+  };
+  if(window.PointerEvent){
+    zoneEl.addEventListener('pointerdown',e=>{
+      if(e.button!==undefined && e.button!==0) return;
+      if(!begin(e.pointerId,e.clientX,e.clientY)) return;
+      e.preventDefault();
+      try{zoneEl.setPointerCapture(e.pointerId);}catch(_){ }
+    },{passive:false});
+    zoneEl.addEventListener('pointermove',e=>{
+      if(e.pointerId!==activeId) return;
+      e.preventDefault(); move(e.clientX,e.clientY);
+    },{passive:false});
+    zoneEl.addEventListener('pointerup',e=>finish(e.pointerId));
+    zoneEl.addEventListener('pointercancel',e=>finish(e.pointerId));
+    zoneEl.addEventListener('lostpointercapture',e=>finish(e.pointerId));
+  }else{
+    zoneEl.addEventListener('touchstart',e=>{
+      const t=e.changedTouches[0]; if(!t||!begin(t.identifier,t.clientX,t.clientY)) return;
+      e.preventDefault();
+    },{passive:false});
+    zoneEl.addEventListener('touchmove',e=>{
+      for(const t of e.changedTouches) if(t.identifier===activeId){e.preventDefault();move(t.clientX,t.clientY);}
+    },{passive:false});
+    const end=e=>{for(const t of e.changedTouches) finish(t.identifier);};
+    zoneEl.addEventListener('touchend',end); zoneEl.addEventListener('touchcancel',end);
+  }
 }
 if(isTouch){
   document.body.classList.add('is-touch');
@@ -1098,11 +1143,29 @@ if(isTouch){
 
 // ---------- orientation lock (mobile) ----------
 const rotateOverlay = document.getElementById('rotateOverlay');
-function isPortrait(){ return window.innerHeight > window.innerWidth; }
-function updateOrientationOverlay(){
-  if(state==='playing' && isTouch && isPortrait()){ rotateOverlay.classList.add('active'); }
-  else { rotateOverlay.classList.remove('active'); }
+let allowPortraitPlay=false, orientationPoll=null;
+function isPortrait(){
+  const type=screen.orientation&&screen.orientation.type;
+  if(type) return type.startsWith('portrait');
+  const vw=window.visualViewport&&window.visualViewport.width;
+  const vh=window.visualViewport&&window.visualViewport.height;
+  return (vh||window.innerHeight)>(vw||window.innerWidth);
 }
+function updateOrientationOverlay(){
+  const portrait=isPortrait();
+  if(!portrait) allowPortraitPlay=false;
+  const show=state==='playing' && isTouch && portrait && !allowPortraitPlay;
+  rotateOverlay.classList.toggle('active',show);
+  if(show && !orientationPoll) orientationPoll=setInterval(updateOrientationOverlay,350);
+  else if(!show && orientationPoll){clearInterval(orientationPoll);orientationPoll=null;}
+}
+document.getElementById('rotateContinue').addEventListener('click',()=>{allowPortraitPlay=true;updateOrientationOverlay();});
+window.addEventListener('resize',updateOrientationOverlay);
+window.addEventListener('orientationchange',updateOrientationOverlay);
+window.addEventListener('pageshow',updateOrientationOverlay);
+document.addEventListener('visibilitychange',updateOrientationOverlay);
+if(screen.orientation&&screen.orientation.addEventListener) screen.orientation.addEventListener('change',updateOrientationOverlay);
+if(window.visualViewport) window.visualViewport.addEventListener('resize',updateOrientationOverlay);
 async function tryLockLandscape(){
   const hint = document.getElementById('fsHint');
   let fsOk = false;
@@ -1129,8 +1192,6 @@ async function tryLockLandscape(){
     hint.textContent = 'Si la barra sigue visible, es una restricción de tu navegador. Prueba con el menú ⋮ de Chrome → "Agregar a pantalla de inicio" y ábrelo desde ahí — así sí abre sin ninguna barra.';
   }
 }
-window.addEventListener('resize', updateOrientationOverlay);
-window.addEventListener('orientationchange', updateOrientationOverlay);
 updateOrientationOverlay();
 
 // ---------- helpers ----------
@@ -1530,9 +1591,13 @@ function applySuperTorbellino(dt){
   if(superFlameTimer<=0){ superFlameTimer = 0.1; GameAudio.sfx('shine'); }
 }
 
+let heartbeatTimer=0;
 function update(dt){
   if(state!=='playing') return;
   updateCoachHints(dt);
+  GameAudio.setGameplayMood('game',wave,bossActive,playerHP/playerMaxHP*100);
+  if(playerHP/playerMaxHP<=0.25){heartbeatTimer-=dt;if(heartbeatTimer<=0){GameAudio.sfx('heartbeat');heartbeatTimer=1.45;}}
+  else heartbeatTimer=0;
 
   // movement input
   let mx=0,my=0;
